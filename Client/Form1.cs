@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;
@@ -33,8 +34,8 @@ namespace Client
 
         static string info;
 
-        //private static string ip = "127.0.0.1";
-        private static string ip = "192.168.2.93";
+        private static string ip = "127.0.0.1";
+        //private static string ip = "192.168.2.93";
 
         private bool MicImageSwitch = false;
         private bool PauseImageSwitch = false;
@@ -55,13 +56,17 @@ namespace Client
             {
                 udpClient = new UdpClient();
                 screenEndpoint = new IPEndPoint(IPAddress.Parse(ip), 8888);
+                //udpClient.Connect(screenEndpoint);
+
+                byte[] connectionRequest = BitConverter.GetBytes(1); // Send a simple integer as a connection request
+                udpClient.Send(connectionRequest, connectionRequest.Length, screenEndpoint);
+
 
                 cameraClient = new TcpClient(ip, 8890);  // for camera
                 cancellationTokenSource = new CancellationTokenSource();
-                
                 cameraStream = cameraClient.GetStream();
 
-                controlClient = new TcpClient(ip, 8891); // Control commands (TCP) port
+                controlClient = new TcpClient(ip, 8891); // Control commands
                 controlStream = controlClient.GetStream();
 
                 SendControlCommand("info");
@@ -85,8 +90,8 @@ namespace Client
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Error connecting to server: " + ex.Message);
-                MessageBox.Show(ex.StackTrace);
+                Console.WriteLine("Error connecting to server: " + ex.Message);
+                Console.WriteLine(ex.StackTrace);
             }
         }
 
@@ -129,9 +134,9 @@ namespace Client
                     audioClient?.Dispose();
                 }
             }
-            catch //(Exception ex)
+            catch (Exception ex)
             {
-                //MessageBox.Show($"Error playing audio: {ex.Message}");
+                Console.WriteLine($"Error playing audio: {ex.Message}");
             }
         }
 
@@ -189,51 +194,125 @@ namespace Client
 
         private async Task ReceiveScreen(CancellationToken cancellationToken)
         {
-            SendControlCommand("resumeScreen");  // Control command via TCP
+            //while (!cancellationToken.IsCancellationRequested)
+            //{
+            //    try
+            //    {
+            //        // Step 1: Receive the number of chunks
+            //        UdpReceiveResult totalChunksResult = await udpClient.ReceiveAsync();
+            //        int totalChunks = BitConverter.ToInt32(totalChunksResult.Buffer, 0);
+            //        Console.WriteLine($"Expected total chunks: {totalChunks}");
+
+            //        // Step 2: Create a buffer to hold the entire image data
+            //        List<byte> imageData = new List<byte>();
+
+            //        // Step 3: Receive all chunks
+            //        for (int i = 0; i < totalChunks; i++)
+            //        {
+            //            UdpReceiveResult chunkResult = await udpClient.ReceiveAsync();
+            //            if (chunkResult.Buffer.Length <= 4)
+            //            {
+            //                Console.WriteLine("Unexpected small chunk, skipping...");
+            //                continue;
+            //            }
+
+            //            imageData.AddRange(chunkResult.Buffer);
+            //            Console.WriteLine($"Received chunk {i + 1}/{totalChunks} - {chunkResult.Buffer.Length} bytes");
+            //        }
+
+            //        // Step 4: Reconstruct the image from the received data
+            //        using (MemoryStream ms = new MemoryStream(imageData.ToArray()))
+            //        {
+            //            Image screenshot = Image.FromStream(ms);
+            //            UpdateImage(screenshot);
+            //        }
+            //    }
+            //    catch (Exception ex)
+            //    {
+            //        Console.WriteLine("Error receiving screen: " + ex.Message);
+            //    }
+            //}
+
+
+            IPEndPoint remoteEndPoint = new IPEndPoint(IPAddress.Any, 0); // EndPoint to receive from any server
 
             while (!cancellationToken.IsCancellationRequested)
             {
                 try
                 {
-                    // Receive the size of the image via UDP
-                    UdpReceiveResult result = await udpClient.ReceiveAsync();
-                    byte[] sizeBytes = result.Buffer;
-                    int imageSize = BitConverter.ToInt32(sizeBytes, 0);
+                    // Receive the expected length first
+                    byte[] lengthBytes = udpClient.Receive(ref remoteEndPoint);
+                    if (lengthBytes.Length < 4)
+                    {
+                        Console.WriteLine("Received length data is invalid.");
+                        continue; // Skip this iteration
+                    }
+                    int length = BitConverter.ToInt32(lengthBytes, 0);
+                    if (length <= 0 || length > 10 * 1024 * 1024) // Validate length
+                    {
+                        Console.WriteLine("Received invalid frame length, discarding frame.");
+                        continue; // Skip this iteration
+                    }
 
-                    // Receive image data (UDP, may need multiple packets)
-                    byte[] imageData = new byte[imageSize];
+                    // Now receive the actual image data
+                    List<byte> receivedData = new List<byte>();
                     int totalBytesReceived = 0;
 
-                    while (totalBytesReceived < imageSize)
+                    while (totalBytesReceived < length)
                     {
-                        UdpReceiveResult imageResult = await udpClient.ReceiveAsync();
-                        Array.Copy(imageResult.Buffer, 0, imageData, totalBytesReceived, imageResult.Buffer.Length);
-                        totalBytesReceived += imageResult.Buffer.Length;
+                        byte[] data = udpClient.Receive(ref remoteEndPoint);
+                        receivedData.AddRange(data);
+                        totalBytesReceived += data.Length;
+
+                        if (totalBytesReceived > length)
+                        {
+                            Console.WriteLine("Received more data than expected, discarding excess.");
+                            break; // Discard excess data
+                        }
                     }
 
-                    // Create image from received data
-                    using (MemoryStream ms = new MemoryStream(imageData))
+                    if (totalBytesReceived == length)
                     {
-                        ms.Position = 0;
-                        Image screenshot = Image.FromStream(ms);
-                        UpdateImage(screenshot);
-                    }
+                        try
+                        {
+                            //DisplayScreenshot(receivedData.ToArray());
 
-                    await Task.Delay(1000 / 60, cancellationToken);  // Adjust the interval as needed
+                            using (MemoryStream ms = new MemoryStream(receivedData.ToArray()))
+                            {
+                                Image screenshot = Image.FromStream(ms);
+                                UpdateImage(screenshot);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine("Error displaying image: " + ex.Message);
+                        }
+                    }
+                    else
+                    {
+                        Console.WriteLine("Received data size mismatch, discarding frame.");
+                    }
                 }
-                catch (OperationCanceledException)
+                catch (SocketException socketEx)
                 {
-                    break;  // Ignore cancellation and exit the loop
+                    Console.WriteLine("Socket error: " + socketEx.Message);
+                }
+                catch (ObjectDisposedException disposedEx)
+                {
+                    Console.WriteLine("Socket was disposed: " + disposedEx.Message);
+                    udpClient = new UdpClient(); // Re-establish connection
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine("Error receiving screen: " + ex.Message);
-                    break;
+                    Console.WriteLine("General error receiving data: " + ex.Message);
                 }
+
+                //Thread.Sleep(10); // Optional delay
             }
 
-            udpClient.Close();
         }
+
+
 
         private void UpdateImage(Image image)
         {
@@ -243,8 +322,18 @@ namespace Client
                 return;
             }
 
-            pictureBox.Image = image;
+            if (image != null)
+            {
+                pictureBox.Image?.Dispose(); // Dispose the previous image
+                pictureBox.Image = image; // Update the PictureBox with the new image
+                pictureBox.Refresh(); // Force the PictureBox to redraw
+            }
+            else
+            {
+                Console.WriteLine("Received null image."); // Debugging line
+            }
         }
+
 
         private async Task ReceiveCameraStream(CancellationToken cancellationToken)
         {
@@ -319,12 +408,14 @@ namespace Client
                 MicImageSwitch = false;
                 Task.Run(() => PlayAudio(false));
 
+            
                 udpClient?.Close();
-                audioClient.Close();
+                audioClient?.Close();
+                
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-
+                Console.WriteLine(ex.Message);
             }
 
         }
@@ -406,7 +497,7 @@ namespace Client
 
         private void trackBar1_ValueChanged(object sender, EventArgs e)
         {
-            if (trackBar1.Value == 0)
+            if (trackBar1.Value <= 0)
             {
                 SendControlCommand("camfps1");
                 label1.Text = "Fps: 1";

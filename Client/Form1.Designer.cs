@@ -177,6 +177,7 @@
             // 
             this.fpsTrackBar.Location = new System.Drawing.Point(504, 12);
             this.fpsTrackBar.Maximum = 60;
+            this.fpsTrackBar.Minimum = 1;
             this.fpsTrackBar.Name = "fpsTrackBar";
             this.fpsTrackBar.Size = new System.Drawing.Size(163, 45);
             this.fpsTrackBar.TabIndex = 13;

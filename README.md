@@ -12,6 +12,8 @@ VoiceServer ja VoiceClient - Väiksemate asjade testimiseks, pole peamise tarkva
 
 Client2 - Kirjutan hetkel Clientit ümber, kuna selle ui oli väga jube.
 
+HoleServer ja HoleClient - Uritasin UDP hole punchingut testida, ei töödanud.
+
 ## Kasutamine
 
 Downloadi Client2.zip, extracti see ja käivita Client2.exe. (Hetkel ainult ui)

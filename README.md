@@ -6,14 +6,17 @@ Tarkvara, mis võimaldab kaugelt arvutit hallata. See on kirjutatud C# keeles, k
 
 ## Tarkvara osad
 
-Client ja Server - Hetkel ei tööta
+Client ja Server - Hetkel ei tööta.
 
-VoiceServer ja VoiceClient - Väiksemate asjade testimiseks, pole peamise tarkvara osa
+VoiceServer ja VoiceClient - Väiksemate asjade testimiseks, pole peamise tarkvara osa.
 
 Client2 - Kirjutan hetkel Clientit ümber, kuna selle ui oli väga jube.
 
-HoleServer ja HoleClient - Uritasin UDP hole punchingut testida, ei töödanud.
+HoleServer ja HoleClient - Üritasin UDP hole punchingut testida, ei töödanud.
 
 ## Kasutamine
 
-Downloadi Client2.zip, extracti see ja käivita Client2.exe. (Hetkel ainult ui)
+Downloadi Client2.zip, extracti see ja käivita Client2.exe (Hetkel ainult ui).
+
+
+© pargivaht - 2024

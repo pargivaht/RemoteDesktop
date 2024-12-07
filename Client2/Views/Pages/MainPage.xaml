@@ -15,6 +15,8 @@
 
     <ui:DynamicScrollViewer>
         <Grid>
+            
+            <Grid>
 
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="500"/>
@@ -25,15 +27,21 @@
 
                 <StackPanel Margin="50,50,80,50" HorizontalAlignment="Right" Width="325">
                     <TextBlock
-                    FontSize="28"
+                    FontSize="24"
                     FontWeight="Medium"
                     Text="Add new connection"
                     Margin="0,0,0,48"/>
 
-                    <ui:TextBox Margin="0,0,0,16" PlaceholderText="Nickname (Optional)"/>
-                    <ui:TextBox Margin="0,0,0,16" PlaceholderText="Ip adress"/>
-                    <ui:PasswordBox Margin="0,0,0,16" PlaceholderText="Password" PasswordChar="●"/>
-                    <ui:Button FontSize="18" Margin="0,16,0,16" Appearance="Primary" Content="Add" Background="#FF559CE4" />
+                        <ui:TextBox Margin="0,0,0,16" PlaceholderText="Nickname (Optional)" x:Name="Name"/>
+                    
+                    <StackPanel Orientation="Horizontal">
+                            <ui:TextBox Margin="0,0,0,16" PlaceholderText="Ip adress" Width="225" x:Name="Ip"/>
+                            <ui:TextBox Margin="8,0,0,16" PlaceholderText="Port" Width="91" x:Name="Port"/>
+
+                    </StackPanel>
+
+                        <ui:PasswordBox Margin="0,0,0,16" PlaceholderText="Password" PasswordChar="●" x:Name="Password"/>
+                    <ui:Button FontSize="18" Margin="0,16,0,16" Appearance="Primary" Content="Add" x:Name="AddBtn"/>
                 </StackPanel>
 
             </Grid>
@@ -55,6 +63,17 @@
                 <uc:Card Grid.Column="0" Grid.Row="1"/>
                 <uc:Card Grid.Column="1" Grid.Row="1"/>
             </Grid>
+
         </Grid>
+
+            <ui:ContentDialog
+                Title="Conecting..."
+                Visibility="Hidden"
+                Content="Please wait a moment...">
+
+            </ui:ContentDialog>
+        </Grid>
+        
+        
     </ui:DynamicScrollViewer>
 </Page>

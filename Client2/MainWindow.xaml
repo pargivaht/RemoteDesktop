@@ -68,6 +68,12 @@
 
 
             <ui:NavigationView.FooterMenuItems>
+                <ui:NavigationViewItem Content="Help" TargetPageType="{x:Type pages:SettingsPage}">
+                    <ui:NavigationViewItem.Icon>
+                        <ui:SymbolIcon Symbol="Info24" />
+                    </ui:NavigationViewItem.Icon>
+                </ui:NavigationViewItem>
+
                 <ui:NavigationViewItem Content="Settings" TargetPageType="{x:Type pages:SettingsPage}">
                     <ui:NavigationViewItem.Icon>
                         <ui:SymbolIcon Symbol="Settings24" />

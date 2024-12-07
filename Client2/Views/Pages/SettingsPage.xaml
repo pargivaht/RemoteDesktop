@@ -17,6 +17,28 @@
             FontWeight="Medium"
             Text="Personalization" />
 
+        <StackPanel  Margin="8,24,0,0">
+            <TextBlock
+            FontSize="16"
+            FontWeight="Medium"
+            Text="Connection protocol"/>
+
+            <RadioButton Margin="8,8,0,0" Content="TCP" FontSize="12" ToolTip="Better stability (Recommended)" IsChecked="True"  x:Name="tcp"/>
+            <RadioButton Margin="8,8,0,0" Content="UDP" FontSize="12" ToolTip="A bit faster"  x:Name="udp"/>
+        </StackPanel>
+
+
+        <StackPanel  Margin="8,24,0,0">
+            <TextBlock
+            FontSize="16"
+            FontWeight="Medium"
+            Text="Direction"/>
+
+            <RadioButton Margin="8,8,0,0" Content="Server to Client" FontSize="12" ToolTip="Needs port forwarding on server side" IsChecked="True"/>
+            <RadioButton Margin="8,8,0,0" Content="Client to Server" FontSize="12" ToolTip="Needs port forwarding on client side"/>
+        </StackPanel>
+
+
         <TextBlock
             Margin="0,24,0,0"
             FontSize="20"

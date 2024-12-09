@@ -19,13 +19,13 @@
             <Grid>
 
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="500"/>
                 <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="400"/>
             </Grid.ColumnDefinitions>
 
             <Grid Grid.Column="1">
 
-                <StackPanel Margin="50,50,80,50" HorizontalAlignment="Right" Width="325">
+                <StackPanel Margin="20,50,20,50" HorizontalAlignment="Right" Width="325">
                     <TextBlock
                     FontSize="24"
                     FontWeight="Medium"
@@ -46,25 +46,12 @@
 
             </Grid>
 
+                <WrapPanel x:Name="ConnectionPanel" Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Top">
 
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="250"/>
-                    <ColumnDefinition Width="250"/>
-                </Grid.ColumnDefinitions>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="275"/>
-                    <RowDefinition Height="275"/>
-                    <RowDefinition Height="275"/>
-                </Grid.RowDefinitions>
+                </WrapPanel>
 
-                <uc:Card/>
-                <uc:Card Grid.Column="1"/>
-                <uc:Card Grid.Column="0" Grid.Row="1"/>
-                <uc:Card Grid.Column="1" Grid.Row="1"/>
+
             </Grid>
-
-        </Grid>
 
             <ui:ContentDialog
                 Title="Conecting..."

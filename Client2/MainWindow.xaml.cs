@@ -4,6 +4,8 @@ using Client2.Views.Pages;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using Wpf.Ui.Appearance;
@@ -17,7 +19,6 @@ namespace Client2
         private object? _currentPage;
 
 
-        public static Listener listener = new();
 
         public MainWindow()
         {
@@ -42,7 +43,7 @@ namespace Client2
 
         private void Window_Loaded(object sender, RoutedEventArgs e)
         {
-            listener.Start();
+
         }
 
     }

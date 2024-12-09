@@ -1,0 +1,25 @@
+name: Line Counter
+
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+jobs:
+  count-lines:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Count lines
+        run: |
+          find . -type f -name "*.cs" -o -name "*.xaml" | xargs wc -l > line-count.txt
+          cat line-count.txt
+
+      - name: Upload line count
+        uses: actions/upload-artifact@v3
+        with:
+          name: line-count
+          path: line-count.txt

@@ -21,9 +21,10 @@ namespace Client2
     public class Listener
     {
 
-        class Connection { public string Name; public string Ip; public string Port; public string Password; }
+        class Connection { public string Name; public string Ip; public string Port; public string Password; public string UUID; }
 
         static MainPage page;
+        static MainWindow mainWindow = (MainWindow)Application.Current.MainWindow;
         static List<CardViewModel> cardViewModels = new List<CardViewModel>(); // List to store the view models
         static List<Connection> connections = new List<Connection>(); // To store the connection data
         static Timer timer;
@@ -50,7 +51,14 @@ namespace Client2
                 ? JsonConvert.DeserializeObject<List<Connection>>(File.ReadAllText(file)) ?? new List<Connection>()
                 : new List<Connection>();
 
-            connections.Add(new Connection { Name = Name, Ip = ip, Port = port, Password = password });
+            connections.Add(new Connection
+            {
+                Name = Name,
+                Ip = ip,
+                Port = port,
+                Password = password,
+                UUID = Guid.NewGuid().ToString()
+            });
 
             File.WriteAllText(file, JsonConvert.SerializeObject(connections, Formatting.Indented));
 
@@ -77,7 +85,8 @@ namespace Client2
                         {
                             Name = conn.Name,
                             Ip = conn.Ip,
-                            Port = conn.Port
+                            Port = conn.Port,
+                            UUID = conn.UUID
                         };
 
                         cardViewModels.Add(cardViewModel);
@@ -87,12 +96,15 @@ namespace Client2
                             Name = conn.Name,
                             Ip = conn.Ip,
                             Port = conn.Port,
+                            UUID = conn.UUID,
                             Margin = new Thickness(50, 0, 0, 0),
                             Password = conn.Password,
                             DataContext = cardViewModel
                         };
 
                         card.OnCardClicked += HandleCardClick;
+                        card.OnDeleteRequested += HandleCardDelete;
+                        //card.OnDeleteRequested += HandleCardEdit;
 
                         page.ConnectionPanel.Children.Add(card);
                     });
@@ -107,7 +119,6 @@ namespace Client2
 
         private void HandleCardClick(string ip, string port, string password)
         {
-            // Perform the required action with IP, Port, and Password
 
             if(ip == String.Empty)
             {
@@ -116,6 +127,41 @@ namespace Client2
 
             MessageBox.Show($"Clicked card with IP: {ip}, Port: {port}, Password: {password}");
         }
+
+        private async void HandleCardDelete(string uuid)
+        {
+
+            if (!await mainWindow.DialogDelete())
+            {
+                return;
+            }
+
+            // Remove the card from the UI
+            var cardToRemove = page.ConnectionPanel.Children
+                .OfType<Card>()
+                .FirstOrDefault(c => c.UUID == uuid);
+
+            if (cardToRemove != null)
+            {
+                Application.Current.Dispatcher.Invoke(() =>
+                {
+                    page.ConnectionPanel.Children.Remove(cardToRemove);
+                });
+            }
+
+            // Update the JSON file to remove the connection
+            string path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), ".RemoteDesktop");
+            string file = Path.Combine(path, "saves.json");
+
+            if (File.Exists(file))
+            {
+                var connections = JsonConvert.DeserializeObject<List<Connection>>(File.ReadAllText(file));
+                connections = connections.Where(c => c.UUID != uuid).ToList();
+
+                File.WriteAllText(file, JsonConvert.SerializeObject(connections, Formatting.Indented));
+            }
+        }
+
 
         static void PingConnections(object state)
         {

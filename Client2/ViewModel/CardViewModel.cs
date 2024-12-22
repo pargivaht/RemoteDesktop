@@ -9,6 +9,8 @@ namespace Client2.ViewModel
         public string Ip { get; set; }
         public string Port { get; set; }
 
+        public string UUID { get; set; }
+
         private Brush _background = new SolidColorBrush(Color.FromRgb(48, 48, 48));
         public Brush Background
         {

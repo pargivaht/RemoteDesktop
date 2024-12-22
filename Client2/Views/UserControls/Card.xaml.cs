@@ -16,6 +16,11 @@ namespace Client2.Views.UserControls
 
         public event Action<string, string, string> OnCardClicked;
 
+        public event Action<string> OnDeleteRequested;
+
+        public event Action<string> OnEditRequested;
+
+
         // Properties for Name, IP, Port, and StatusColor
 
         public static readonly DependencyProperty NameProperty =
@@ -56,6 +61,15 @@ namespace Client2.Views.UserControls
             set { SetValue(StatusColorProperty, value); }
         }
 
+        public static readonly DependencyProperty UUIDProperty =
+            DependencyProperty.Register("UUID", typeof(string), typeof(Card), new PropertyMetadata(string.Empty));
+
+        public string UUID
+        {
+            get { return (string)GetValue(UUIDProperty); }
+            set { SetValue(UUIDProperty, value); }
+        }
+
         public Card()
         {
             InitializeComponent();
@@ -68,14 +82,14 @@ namespace Client2.Views.UserControls
         }
 
 
-        private void EditMenuItem_Click(object sender, RoutedEventArgs e)
+        private void EditCard_Click(object sender, RoutedEventArgs e)
         {
-            MessageBox.Show("Edit action triggered for card: " + Name);
+            OnEditRequested?.Invoke(UUID);
         }
 
-        private void DeleteMenuItem_Click(object sender, RoutedEventArgs e)
+        private void DeleteCard_Click(object sender, RoutedEventArgs e)
         {
-            MessageBox.Show("Delete action triggered for card: " + Name);
+            OnDeleteRequested?.Invoke(UUID);
         }
 
     }

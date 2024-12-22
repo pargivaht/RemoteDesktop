@@ -1,6 +1,7 @@
 ﻿using Client2.ViewModel;
 using System;
 using System.Threading;
+using System.Windows;
 using System.Windows.Input;
 
 namespace Client2.Views.Pages
@@ -8,6 +9,8 @@ namespace Client2.Views.Pages
     public partial class MainPage
     {
         public static Listener listener;
+
+        MainWindow mainWindow = (MainWindow)Application.Current.MainWindow;
 
         public MainPage()
         {
@@ -25,13 +28,20 @@ namespace Client2.Views.Pages
             new Thread(listener.Start).Start();
         }
 
-        private void AddBtn_Click(object sender, System.Windows.RoutedEventArgs e)
+        private async void AddBtn_Click(object sender, System.Windows.RoutedEventArgs e)
         {
-            listener.AddNewCard(Name.Text, Ip.Text, Port.Text, Password.Password);
+            if (string.IsNullOrEmpty(Ip.Text) || string.IsNullOrEmpty(Port.Text))
+            {
+                await mainWindow.DialogFillAll();
+            }
+            else
+            {
+                listener.AddNewCard(Name.Text, Ip.Text, Port.Text, Password.Password);
 
-            Name.Clear();
-            Ip.Clear();
-            Password.Clear();
+                Name.Clear();
+                Ip.Clear();
+                Password.Clear();
+            }
         }
     }
 }

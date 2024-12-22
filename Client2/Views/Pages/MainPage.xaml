@@ -53,12 +53,8 @@
 
             </Grid>
 
-            <ui:ContentDialog
-                Title="Conecting..."
-                Visibility="Hidden"
-                Content="Please wait a moment...">
 
-            </ui:ContentDialog>
+
         </Grid>
         
         

@@ -4,6 +4,7 @@ using System.Windows.Media;
 using Client2.ViewModel;
 using System.Windows;
 using System.Windows.Input;
+using System;
 
 
 
@@ -12,6 +13,9 @@ namespace Client2.Views.UserControls
 
     public partial class Card : UserControl
     {
+
+        public event Action<string, string, string> OnCardClicked;
+
         // Properties for Name, IP, Port, and StatusColor
 
         public static readonly DependencyProperty NameProperty =
@@ -41,6 +45,8 @@ namespace Client2.Views.UserControls
             set { SetValue(PortProperty, value); }
         }
 
+        public string Password { get; set; }
+
         public static readonly DependencyProperty StatusColorProperty =
             DependencyProperty.Register("StatusColor", typeof(Brush), typeof(Card), new PropertyMetadata(Brushes.Red));
 
@@ -56,9 +62,21 @@ namespace Client2.Views.UserControls
             this.DataContext = this;  // Set the DataContext to this card instance
         }
 
-        private void Card_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        private void Card_Click(object sender, MouseButtonEventArgs e)
         {
-
+            OnCardClicked?.Invoke(Ip, Port, Password);
         }
+
+
+        private void EditMenuItem_Click(object sender, RoutedEventArgs e)
+        {
+            MessageBox.Show("Edit action triggered for card: " + Name);
+        }
+
+        private void DeleteMenuItem_Click(object sender, RoutedEventArgs e)
+        {
+            MessageBox.Show("Delete action triggered for card: " + Name);
+        }
+
     }
 }

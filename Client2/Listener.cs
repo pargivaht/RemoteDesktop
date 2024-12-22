@@ -88,8 +88,12 @@ namespace Client2
                             Ip = conn.Ip,
                             Port = conn.Port,
                             Margin = new Thickness(50, 0, 0, 0),
+                            Password = conn.Password,
                             DataContext = cardViewModel
                         };
+
+                        card.OnCardClicked += HandleCardClick;
+
                         page.ConnectionPanel.Children.Add(card);
                     });
                 }
@@ -101,6 +105,17 @@ namespace Client2
             Application.Current.Dispatcher.Invoke(page.ConnectionPanel.Children.Clear);
         }
 
+        private void HandleCardClick(string ip, string port, string password)
+        {
+            // Perform the required action with IP, Port, and Password
+
+            if(ip == String.Empty)
+            {
+                return;
+            }
+
+            MessageBox.Show($"Clicked card with IP: {ip}, Port: {port}, Password: {password}");
+        }
 
         static void PingConnections(object state)
         {
@@ -131,9 +146,8 @@ namespace Client2
                     }
                 });
             }
-            catch (Exception)
+            catch (Exception) // In case of exception (e.g., timeout)
             {
-                // In case of exception (e.g., timeout)
                 Application.Current.Dispatcher.Invoke(() =>
                 {
                     cardViewModel.Background = new SolidColorBrush(Color.FromRgb(193, 0, 0));

@@ -8,7 +8,7 @@
              xmlns:vm="clr-namespace:Client2.ViewModel"
              mc:Ignorable="d" 
              d:DesignHeight="450" d:DesignWidth="800"
-             MouseLeftButtonDown="Card_MouseLeftButtonDown">
+             MouseLeftButtonDown="Card_Click">
 
     <UserControl.DataContext>
         <vm:CardViewModel/>
@@ -21,23 +21,84 @@
                 <DropShadowEffect 
                     BlurRadius="20" 
                     ShadowDepth="3" 
-                    Color="#FF141414" />
+                    Color="#FF141414"
+                    x:Name="ShadowEffect"/>
             </ui:Card.Effect>
 
             <ui:Card.Background>
                 <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
                     <GradientStop Color="#FF303030" Offset="0.2" />
-                    <GradientStop Color="{Binding Background.Color}" Offset="3" />
+                    <GradientStop x:Name="DynamicGradientStop" Color="{Binding Background.Color}" Offset="3" />
                 </LinearGradientBrush>
             </ui:Card.Background>
 
 
-            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="20">
-                <ui:SymbolIcon Symbol="Desktop24" Filled="False" FontSize="50" Margin="20"/>
-                <TextBlock Text="{Binding Name}" FontSize="14" FontWeight="Bold" Margin="0,5,0,0"/>
-                <TextBlock Text="{Binding Ip}" FontSize="12" Margin="0,5,0,0"/>
-                <TextBlock Text="{Binding Port}" FontSize="12" Margin="0,5,0,0"/>
-            </StackPanel>
+            <Grid>
+
+
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="20">
+                    <ui:SymbolIcon Symbol="Desktop24" Filled="False" FontSize="50" Margin="20"/>
+                    <TextBlock Text="{Binding Name}" FontSize="14" FontWeight="Bold" Margin="0,5,0,0"/>
+                    <TextBlock Text="{Binding Ip}" FontSize="12" Margin="0,5,0,0"/>
+                    <TextBlock Text="{Binding Port}" FontSize="12" Margin="0,5,0,0"/>
+                </StackPanel>
+            </Grid>
+            
+            
+
+
+            
         </ui:Card>
+
+
+        <Grid.Triggers>
+            <EventTrigger RoutedEvent="MouseEnter">
+                <BeginStoryboard>
+                    <Storyboard>
+                        <DoubleAnimation Storyboard.TargetName="ShadowEffect"
+                                         Storyboard.TargetProperty="ShadowDepth"
+                                         To="8" Duration="0:0:0.15" />
+
+                        <DoubleAnimation Storyboard.TargetName="DynamicGradientStop"
+                                         Storyboard.TargetProperty="Offset"
+                                         To="2" Duration="0:0:0.3" />
+                    </Storyboard>
+                </BeginStoryboard>
+            </EventTrigger>
+
+            <EventTrigger RoutedEvent="MouseLeave">
+                <BeginStoryboard>
+                    <Storyboard>
+                        <DoubleAnimation Storyboard.TargetName="ShadowEffect"
+                                         Storyboard.TargetProperty="ShadowDepth"
+                                         To="3" Duration="0:0:0.15" />
+
+                        <DoubleAnimation Storyboard.TargetName="DynamicGradientStop"
+                                         Storyboard.TargetProperty="Offset"
+                                         To="3" Duration="0:0:0.3" />
+                    </Storyboard>
+                </BeginStoryboard>
+            </EventTrigger>
+
+            <EventTrigger RoutedEvent="MouseDown">
+                <BeginStoryboard>
+                    <Storyboard>
+                        <DoubleAnimation Storyboard.TargetName="DynamicGradientStop"
+                                         Storyboard.TargetProperty="Offset"
+                                         To="1.6" Duration="0:0:0.07" />
+                    </Storyboard>
+                </BeginStoryboard>
+            </EventTrigger>
+            
+            <EventTrigger RoutedEvent="MouseUp">
+                <BeginStoryboard>
+                    <Storyboard>
+                        <DoubleAnimation Storyboard.TargetName="DynamicGradientStop"
+                                         Storyboard.TargetProperty="Offset"
+                                         To="2" Duration="0:0:0.1" />
+                    </Storyboard>
+                </BeginStoryboard>
+            </EventTrigger>
+        </Grid.Triggers>
     </Grid>
 </UserControl>

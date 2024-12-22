@@ -2,13 +2,13 @@
 using Client2.ViewModel;
 using Client2.Views.Pages;
 using System;
-using System.Collections.Generic;
-using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using Wpf.Ui;
 using Wpf.Ui.Appearance;
+using Wpf.Ui.Controls;
 namespace Client2
 {
     /// <summary>
@@ -16,9 +16,6 @@ namespace Client2
     /// </summary>
     public partial class MainWindow
     {
-        private object? _currentPage;
-
-
 
         public MainWindow()
         {
@@ -30,8 +27,6 @@ namespace Client2
             SystemThemeWatcher.Watch(this);
             Loaded += (_, _) => RootNavigation.Navigate(typeof(MainPage));
 
-            
-
         }
 
         private void MainWindow_StateChanged(object sender, EventArgs e)
@@ -41,9 +36,71 @@ namespace Client2
             connectionPage.AdjustContentSize();
         }
 
-        private void Window_Loaded(object sender, RoutedEventArgs e)
+        private async void Window_Loaded(object sender, RoutedEventArgs e)
         {
 
+        }
+
+        public async Task<bool> DialogDelete()
+        {
+            var contentDialogService = new ContentDialogService();
+            contentDialogService.SetDialogHost(RootContentDialogPresenter);
+
+            ContentDialogResult a = await contentDialogService.ShowAsync(
+                new ContentDialog()
+                {
+                    Title = "Delete Item?",
+                    Content = "Are you sure that you want to delete this?",
+                    PrimaryButtonText = "Delete",
+                    IsSecondaryButtonEnabled = false,
+                    PrimaryButtonAppearance = ControlAppearance.Danger,
+                    CloseButtonText = "Cancel"
+                }, CancellationToken.None);
+
+            
+            if(a.Equals(ContentDialogResult.Primary))
+            {
+                return true;
+            }
+            else
+                { return false; }
+
+        }
+
+        public async Task DialogWait(CancellationToken c)
+        {
+            var contentDialogService = new ContentDialogService();
+            contentDialogService.SetDialogHost(RootContentDialogPresenter);
+
+            ContentDialogResult a = await contentDialogService.ShowAsync(
+                new ContentDialog()
+                {
+                    Title = "Connecting...",
+                    Content = "Please wait a moment.",
+                    IsPrimaryButtonEnabled = false,
+                    IsSecondaryButtonEnabled = false,
+                    PrimaryButtonAppearance = ControlAppearance.Secondary,
+                    CloseButtonText = "Cancel"
+                }, c);
+
+        }
+
+        public async Task DialogFillAll()
+        {
+            var contentDialogService = new ContentDialogService();
+            contentDialogService.SetDialogHost(RootContentDialogPresenter);
+
+            ContentDialogResult a = await contentDialogService.ShowAsync(
+                new ContentDialog()
+                {
+                    Title = "Missing Info",
+                    Content = "Please fill all required fields.",
+                    IsPrimaryButtonEnabled = false,
+                    IsSecondaryButtonEnabled = false,
+                    PrimaryButtonAppearance = ControlAppearance.Secondary,
+                    CloseButtonText = "Ok"
+                }, CancellationToken.None);
+            
         }
 
     }

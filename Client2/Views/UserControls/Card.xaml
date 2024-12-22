@@ -33,6 +33,13 @@
             </ui:Card.Background>
 
 
+            <ui:Card.ContextMenu>
+                <ContextMenu>
+                    <MenuItem Header="Delete" Click="DeleteCard_Click" Icon="{ui:SymbolIcon Delete24}"/>
+                    <MenuItem Header="Edit" Click="EditCard_Click" Icon="{ui:SymbolIcon Edit24}"/>
+                </ContextMenu>
+            </ui:Card.ContextMenu>
+
             <Grid>
 
 

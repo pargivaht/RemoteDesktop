@@ -21,72 +21,77 @@
     WindowStartupLocation="CenterScreen"
     mc:Ignorable="d">
 
-
     <Grid>
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
-        </Grid.RowDefinitions>
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
 
 
-        <ui:NavigationView x:Name="RootNavigation" Grid.Row="1" >
-            <ui:NavigationView.AutoSuggestBox>
-                <ui:AutoSuggestBox x:Name="AutoSuggestBox" PlaceholderText="Search">
-                    <ui:AutoSuggestBox.Icon>
-                        <ui:IconSourceElement>
-                            <ui:SymbolIconSource Symbol="Search24" />
-                        </ui:IconSourceElement>
-                    </ui:AutoSuggestBox.Icon>
-                </ui:AutoSuggestBox>
-            </ui:NavigationView.AutoSuggestBox>
-            <ui:NavigationView.Header>
-                <ui:BreadcrumbBar
-                Margin="42,32,0,0"
-                FontSize="28"
-                FontWeight="DemiBold" />
-                
-            </ui:NavigationView.Header>
-            <ui:NavigationView.MenuItems>
+            <ui:NavigationView x:Name="RootNavigation" Grid.Row="1" >
+                <ui:NavigationView.AutoSuggestBox>
+                    <ui:AutoSuggestBox x:Name="AutoSuggestBox" PlaceholderText="Search">
+                        <ui:AutoSuggestBox.Icon>
+                            <ui:IconSourceElement>
+                                <ui:SymbolIconSource Symbol="Search24" />
+                            </ui:IconSourceElement>
+                        </ui:AutoSuggestBox.Icon>
+                    </ui:AutoSuggestBox>
+                </ui:NavigationView.AutoSuggestBox>
+                <ui:NavigationView.Header>
+                    <ui:BreadcrumbBar
+                    Margin="42,32,0,0"
+                    FontSize="28"
+                    FontWeight="DemiBold" />
 
-                <ui:NavigationViewItem Content="Home" TargetPageType="{x:Type pages:MainPage}" Margin="0,8,0,0">
-                    <ui:NavigationViewItem.Icon>
-                        <ui:SymbolIcon Symbol="Home24" />
-                    </ui:NavigationViewItem.Icon>
-                </ui:NavigationViewItem>
+                </ui:NavigationView.Header>
+                <ui:NavigationView.MenuItems>
 
-                <ui:NavigationViewItemSeparator />
+                    <ui:NavigationViewItem Content="Home" TargetPageType="{x:Type pages:MainPage}" Margin="0,8,0,0">
+                        <ui:NavigationViewItem.Icon>
+                            <ui:SymbolIcon Symbol="Home24" />
+                        </ui:NavigationViewItem.Icon>
+                    </ui:NavigationViewItem>
 
-                <ui:NavigationViewItem Content="user@pc - 192.168.2.93" TargetPageType="{x:Type pages:ConnectionPage}">
-                    <ui:NavigationViewItem.Icon>
-                        <ui:SymbolIcon Symbol="Desktop16" Filled="False"/>
-                    </ui:NavigationViewItem.Icon>
-                    
-                </ui:NavigationViewItem>
+                    <ui:NavigationViewItemSeparator />
 
+                    <ui:NavigationViewItem Content="user@pc - 192.168.2.93" TargetPageType="{x:Type pages:ConnectionPage}">
+                        <ui:NavigationViewItem.Icon>
+                            <ui:SymbolIcon Symbol="Desktop16" Filled="False"/>
+                        </ui:NavigationViewItem.Icon>
 
-            </ui:NavigationView.MenuItems>
+                    </ui:NavigationViewItem>
 
 
-            <ui:NavigationView.FooterMenuItems>
-                <ui:NavigationViewItem Content="Help" TargetPageType="{x:Type pages:SettingsPage}">
-                    <ui:NavigationViewItem.Icon>
-                        <ui:SymbolIcon Symbol="Info24" />
-                    </ui:NavigationViewItem.Icon>
-                </ui:NavigationViewItem>
+                </ui:NavigationView.MenuItems>
 
-                <ui:NavigationViewItem Content="Settings" TargetPageType="{x:Type pages:SettingsPage}">
-                    <ui:NavigationViewItem.Icon>
-                        <ui:SymbolIcon Symbol="Settings24" />
-                    </ui:NavigationViewItem.Icon>
-                </ui:NavigationViewItem>
-            </ui:NavigationView.FooterMenuItems>
-        </ui:NavigationView>
 
-        <ui:TitleBar
-            Title="Remote Desktop"
-            Grid.Row="0"
-            Icon="pack://application:,,,/Assets/applicationIcon-256.png" />
+                <ui:NavigationView.FooterMenuItems>
+                    <ui:NavigationViewItem Content="Help" TargetPageType="{x:Type pages:SettingsPage}">
+                        <ui:NavigationViewItem.Icon>
+                            <ui:SymbolIcon Symbol="Info24" />
+                        </ui:NavigationViewItem.Icon>
+                    </ui:NavigationViewItem>
 
-        
+                    <ui:NavigationViewItem Content="Settings" TargetPageType="{x:Type pages:SettingsPage}">
+                        <ui:NavigationViewItem.Icon>
+                            <ui:SymbolIcon Symbol="Settings24" />
+                        </ui:NavigationViewItem.Icon>
+                    </ui:NavigationViewItem>
+                </ui:NavigationView.FooterMenuItems>
+            </ui:NavigationView>
+
+            <ui:TitleBar
+                Title="Remote Desktop"
+                Grid.Row="0"
+                Icon="pack://application:,,,/Assets/applicationIcon-256.png" />
+        </Grid>
+
+
+        <ContentPresenter x:Name="RootContentDialogPresenter" Grid.Row="0" />
+
+
     </Grid>
+
 </ui:FluentWindow>

@@ -15,21 +15,29 @@ using System.Windows.Shapes;
 
 namespace Client2.Views.Pages
 {
-    /// <summary>
-    /// Interaction logic for ConnectionPage.xaml
-    /// </summary>
     public partial class ConnectionPage : Page
     {
+        private readonly Connection _connection;
+
+
+
         private const double HeaderHeight = 55;
         private const double FooterHeight = 40;
 
         public ConnectionPage()
         {
             InitializeComponent();
-
-            // Ensure size calculations on load and when the page resizes
             Loaded += ConnectionPage_Loaded;
             SizeChanged += ConnectionPage_SizeChanged;
+            
+
+            string ip = NavigationParameters.Ip;
+            int port = NavigationParameters.Port;
+            string password = NavigationParameters.Password;
+
+            _connection = new Connection(ip, port, password);
+
+            //do something initially. eg. connect
         }
 
         private void ConnectionPage_Loaded(object sender, RoutedEventArgs e)
@@ -44,15 +52,23 @@ namespace Client2.Views.Pages
 
         public void AdjustContentSize()
         {
-            // Calculate the available height for the middle row
+            double HeaderHeight = 55, FooterHeight = 40;
             double availableHeight = ActualHeight - HeaderHeight - FooterHeight;
-
             if (availableHeight > 0)
             {
-                // Dynamically set the middle row's height
                 MainGrid.RowDefinitions[1].Height = new GridLength(availableHeight, GridUnitType.Pixel);
             }
         }
+
+
+    }
+
+
+    public static class NavigationParameters
+    {
+        public static string Ip { get; set; }
+        public static int Port { get; set; }
+        public static string Password { get; set; }
     }
 
 

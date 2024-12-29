@@ -25,21 +25,38 @@ namespace Client2
             StateChanged += MainWindow_StateChanged;
             Loaded += Window_Loaded;
             SystemThemeWatcher.Watch(this);
-            Loaded += (_, _) => RootNavigation.Navigate(typeof(MainPage));
+            Loaded += (_, _) => 
+            {
+                RootNavigation.Navigate(typeof(MainPage));
+                RootNavigation.IsPaneOpen = false;
+            };
 
         }
 
         private void MainWindow_StateChanged(object sender, EventArgs e)
         {
 
-            ConnectionPage connectionPage = new ConnectionPage();
-            connectionPage.AdjustContentSize();
+            //ConnectionPage connectionPage = new ConnectionPage();
+            //connectionPage.AdjustContentSize();
         }
 
         private async void Window_Loaded(object sender, RoutedEventArgs e)
         {
 
         }
+
+        public void CreateNewConnection(string ip, int port, string password)
+        {
+            // Set the values in the static class before navigating
+            NavigationParameters.Ip = ip;
+            NavigationParameters.Port = port;
+            NavigationParameters.Password = password;
+
+            // Navigate to the ConnectionPage
+            RootNavigation.Navigate(typeof(ConnectionPage));
+        }
+
+
 
         public async Task<bool> DialogDelete()
         {

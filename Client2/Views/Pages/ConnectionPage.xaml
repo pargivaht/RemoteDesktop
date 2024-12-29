@@ -65,7 +65,7 @@
                     <ColumnDefinition/>
                     <ColumnDefinition/>
                 </Grid.ColumnDefinitions>
-                <Slider Grid.Column="1" Margin="8,0,0,0"/>
+                <Slider Grid.Column="1" Margin="8,0,0,0" x:Name="fps_slider" Value="60" SmallChange="1" Maximum="144" AutoToolTipPlacement="TopLeft" LargeChange="10"/>
                 <ui:TextBlock Text="Fps" FontSize="14"  Grid.Column="0" Margin="0,1"/>
             </Grid>
 
@@ -85,7 +85,7 @@
                 <TabItem Header="Camera"/>
             </TabControl>
 
-            <ui:Image Source="pack://application:,,,/Assets/fgh.png" Grid.Row="1" Stretch="Uniform" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="4,0,4,4" CornerRadius="10"/>
+            <ui:Image Source="pack://application:,,,/Assets/fgh.png" Grid.Row="1" Stretch="Uniform" VerticalAlignment="Top" HorizontalAlignment="Left" Margin="4,0,4,4" CornerRadius="10"/>
         </Grid>
 
         <Grid Grid.Row="2" Margin="24,0,0,0">

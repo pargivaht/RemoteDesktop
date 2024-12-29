@@ -117,15 +117,15 @@ namespace Client2
             Application.Current.Dispatcher.Invoke(page.ConnectionPanel.Children.Clear);
         }
 
-        private void HandleCardClick(string ip, string port, string password)
+        private async void HandleCardClick(string ip, string port, string password)
         {
 
-            if(ip == String.Empty)
-            {
-                return;
-            }
 
-            MessageBox.Show($"Clicked card with IP: {ip}, Port: {port}, Password: {password}");
+            await mainWindow.DialogWait(CancellationToken.None);
+
+            
+
+            mainWindow.CreateNewConnection(ip, int.Parse(port), password);
         }
 
         private async void HandleCardDelete(string uuid)
@@ -161,7 +161,6 @@ namespace Client2
                 File.WriteAllText(file, JsonConvert.SerializeObject(connections, Formatting.Indented));
             }
         }
-
 
         static void PingConnections(object state)
         {

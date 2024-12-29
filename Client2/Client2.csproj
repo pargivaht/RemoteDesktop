@@ -62,6 +62,7 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
+    <Compile Include="Connection.cs" />
     <Compile Include="Listener.cs" />
     <Compile Include="ViewModel\CardViewModel.cs" />
     <Compile Include="Views\Pages\ConnectionPage.xaml.cs">

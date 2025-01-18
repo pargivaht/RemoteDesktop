@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Net.Mail;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
@@ -12,13 +14,14 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
+using Wpf.Ui.Controls;
+using Image = System.Drawing.Image;
 
 namespace Client2.Views.Pages
 {
     public partial class ConnectionPage : Page
     {
         private readonly Connection _connection;
-
 
 
         private const double HeaderHeight = 55;
@@ -35,9 +38,42 @@ namespace Client2.Views.Pages
             int port = NavigationParameters.Port;
             string password = NavigationParameters.Password;
 
-            _connection = new Connection(ip, port, password);
+            MainWindow window = NavigationParameters.Window;
 
-            //do something initially. eg. connect
+            _connection = new Connection(ip, port, password, this, window);
+
+            _connection.ScreenUpdated += OnScreenUpdated;
+            _connection.CameraUpdated += OnCameraUpdated;
+        }
+
+        private void OnScreenUpdated(Image image)
+        {
+            Dispatcher.Invoke(() =>
+            {
+                pictureBoxScreen.Source = ConvertToBitmapImage(image);
+            });
+        }
+
+        private void OnCameraUpdated(Image image)
+        {
+            Dispatcher.Invoke(() =>
+            {
+                //CameraImage.Source = ConvertToBitmapImage(image);
+            });
+        }
+
+        private BitmapImage ConvertToBitmapImage(Image image)
+        {
+            using var ms = new MemoryStream();
+            image.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
+            ms.Position = 0;
+
+            var bitmap = new BitmapImage();
+            bitmap.BeginInit();
+            bitmap.StreamSource = ms;
+            bitmap.CacheOption = BitmapCacheOption.OnLoad;
+            bitmap.EndInit();
+            return bitmap;
         }
 
         private void ConnectionPage_Loaded(object sender, RoutedEventArgs e)
@@ -60,6 +96,98 @@ namespace Client2.Views.Pages
             }
         }
 
+        private void MicBtn_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Wpf.Ui.Controls.MenuItem menuItem)
+            {
+                if (menuItem.Icon is SymbolIcon symbolIcon)
+                {
+                    bool isOn = symbolIcon.Symbol != SymbolRegular.Mic24;
+
+                    symbolIcon.Symbol = symbolIcon.Symbol == SymbolRegular.Mic24
+                        ? SymbolRegular.MicOff24
+                        : SymbolRegular.Mic24;
+
+                    _connection.Mic(isOn);
+                }
+            }
+        }
+
+        private void SpeakerBtn_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Wpf.Ui.Controls.MenuItem menuItem)
+            {
+                if (menuItem.Icon is SymbolIcon symbolIcon)
+                {
+                    bool isOn = symbolIcon.Symbol != SymbolRegular.Speaker224;
+
+                    symbolIcon.Symbol = symbolIcon.Symbol == SymbolRegular.Speaker224
+                        ? SymbolRegular.SpeakerOff24
+                        : SymbolRegular.Speaker224;
+
+                    if (isOn)
+                    {
+                        System.Windows.MessageBox.Show("Speaker is on");
+                    }
+                    else
+                    {
+                        System.Windows.MessageBox.Show("Speaker is !on");
+                    }
+                }
+            }
+        }
+
+        private void CamBtn_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Wpf.Ui.Controls.MenuItem menuItem)
+            {
+                if (menuItem.Icon is SymbolIcon symbolIcon)
+                {
+                    bool isOn = symbolIcon.Symbol != SymbolRegular.Camera24;
+
+                    symbolIcon.Symbol = symbolIcon.Symbol == SymbolRegular.Camera24
+                        ? SymbolRegular.CameraOff24
+                        : SymbolRegular.Camera24;
+
+                    if (isOn)
+                    {
+                        System.Windows.MessageBox.Show("Speaker is on");
+                    }
+                    else
+                    {
+                        System.Windows.MessageBox.Show("Speaker is !on");
+                    }
+                }
+            }
+        }
+
+        private void ReconnectBtn_Click(object sender, RoutedEventArgs e)
+        {
+            _connection.Reconnect();
+        }
+
+        private void DisconnectBtn_Click(object sender, RoutedEventArgs e)
+        {
+
+            NavigationService?.Navigate(new MainPage());
+            _connection.Disconnect();
+        }
+
+        private void fps_slider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            if (_connection != null)
+            {
+                _connection.ChangeFps((int)fps_slider.Value);
+            }
+        }
+
+        private void compression_slider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            if (_connection != null)
+            {
+                _connection.Compression((int)compression_slider.Value);
+            }
+        }
 
     }
 
@@ -69,7 +197,7 @@ namespace Client2.Views.Pages
         public static string Ip { get; set; }
         public static int Port { get; set; }
         public static string Password { get; set; }
+        public static MainWindow Window { get; set; }
+
     }
-
-
 }

@@ -52,23 +52,32 @@
 
                 <ui:MenuItem Header="Prefrences" Icon="{ui:SymbolIcon Settings24}"/>
                 <Separator />
-                <ui:MenuItem Header="Disconnect" Icon="{ui:SymbolIcon PlugDisconnected24}"/>
+                <ui:MenuItem Header="Reconnect" Icon="{ui:SymbolIcon ArrowSync24}" Click="ReconnectBtn_Click"/>
+                <ui:MenuItem Header="Disconnect" Icon="{ui:SymbolIcon PlugDisconnected24}" Click="DisconnectBtn_Click"/>
             </ui:MenuItem>
-            <ui:MenuItem Icon="{ui:SymbolIcon Mic24}" Header="Mic"/>
-            <!-- MicOff24 -->
-            <ui:MenuItem Icon="{ui:SymbolIcon Speaker224}" Header="Speaker"/>
-            <!-- SpeakerOff24 -->
-            <ui:MenuItem Icon="{ui:SymbolIcon Camera24}" Header="Camera"/>
-            <!-- CameraOff24 -->
+            <ui:MenuItem Icon="{ui:SymbolIcon MicOff24}" Header="Mic" Click="MicBtn_Click"/>
+            <!-- Mic24 -->
+            <ui:MenuItem Icon="{ui:SymbolIcon SpeakerOff24}" Header="Speaker" Click="SpeakerBtn_Click"/>
+            <!-- Speaker224 -->
+            <ui:MenuItem Icon="{ui:SymbolIcon CameraOff24}" Header="Camera" Click="CamBtn_Click"/>
+            <!-- Camera24 -->
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition/>
                     <ColumnDefinition/>
                 </Grid.ColumnDefinitions>
-                <Slider Grid.Column="1" Margin="8,0,0,0" x:Name="fps_slider" Value="60" SmallChange="1" Maximum="144" AutoToolTipPlacement="TopLeft" LargeChange="10"/>
+                <Slider Grid.Column="1" Margin="8,0,0,0" x:Name="fps_slider" Value="60" SmallChange="1" Maximum="144" AutoToolTipPlacement="TopLeft" LargeChange="10" ValueChanged="fps_slider_ValueChanged"/>
                 <ui:TextBlock Text="Fps" FontSize="14"  Grid.Column="0" Margin="0,1"/>
             </Grid>
 
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition/>
+                    <ColumnDefinition/>
+                </Grid.ColumnDefinitions>
+                <Slider Grid.Column="1" Margin="8,0,0,0" x:Name="compression_slider" Value="100" SmallChange="1" Maximum="100" AutoToolTipPlacement="TopLeft" LargeChange="10" ValueChanged="compression_slider_ValueChanged"/>
+                <ui:TextBlock Text="Quality" FontSize="14"  Grid.Column="0" Margin="0,1"/>
+            </Grid>
 
 
         </Menu>
@@ -85,7 +94,7 @@
                 <TabItem Header="Camera"/>
             </TabControl>
 
-            <ui:Image Source="pack://application:,,,/Assets/fgh.png" Grid.Row="1" Stretch="Uniform" VerticalAlignment="Top" HorizontalAlignment="Left" Margin="4,0,4,4" CornerRadius="10"/>
+            <ui:Image Grid.Row="1" Stretch="Uniform" VerticalAlignment="Top" HorizontalAlignment="Left" Margin="4,0,4,4" CornerRadius="10" x:Name="pictureBoxScreen"/>
         </Grid>
 
         <Grid Grid.Row="2" Margin="24,0,0,0">

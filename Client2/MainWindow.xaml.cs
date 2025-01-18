@@ -35,7 +35,6 @@ namespace Client2
 
         private void MainWindow_StateChanged(object sender, EventArgs e)
         {
-
             //ConnectionPage connectionPage = new ConnectionPage();
             //connectionPage.AdjustContentSize();
         }
@@ -51,12 +50,17 @@ namespace Client2
             NavigationParameters.Ip = ip;
             NavigationParameters.Port = port;
             NavigationParameters.Password = password;
+            NavigationParameters.Window = this;
 
             // Navigate to the ConnectionPage
             RootNavigation.Navigate(typeof(ConnectionPage));
         }
 
-
+        public void SetTitle(string title)
+        {
+            Title = title;
+            Titlebar.Title = title;
+        }
 
         public async Task<bool> DialogDelete()
         {

@@ -85,7 +85,7 @@
             <ui:TitleBar
                 Title="Remote Desktop"
                 Grid.Row="0"
-                Icon="pack://application:,,,/Assets/applicationIcon-256.png" />
+                Icon="pack://application:,,,/Assets/applicationIcon-256.png" x:Name="Titlebar"/>
         </Grid>
 
 

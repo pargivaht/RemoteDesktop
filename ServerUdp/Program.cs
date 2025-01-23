@@ -17,9 +17,10 @@ namespace Server
 {
     class Program
     {
-        static TcpListener screenListener;
+        static UdpClient screenUdpClient;
         static TcpListener voiceListener;
         static TcpListener cameraListener;
+        static TcpListener controlListener;
 
         static FilterInfoCollection videoDevices;
         static int currentDeviceIndex = 1;
@@ -28,15 +29,15 @@ namespace Server
         static bool isScreenSharingPaused = false;
 
         static public int fps = 60;
-        static public int compression = 100;
+        private const int MaxUdpPacketSize = 8192;
 
         static string info = "Remote Desktop: " + Environment.UserName + "@" + Environment.MachineName + ". Monitor Count: " + SystemInformation.MonitorCount;
 
-        static async Task Main(string[] args)
+        static void Main(string[] args)
         {
-            screenListener = new TcpListener(IPAddress.Any, 8888);
-            screenListener.Start();
-            Console.WriteLine("Screen sharing server started.");
+            // Initialize UDP client for screen sharing
+            screenUdpClient = new UdpClient(8888);
+            Console.WriteLine("Screen sharing server started (UDP).");
 
             voiceListener = new TcpListener(IPAddress.Any, 8889);
             voiceListener.Start();
@@ -46,11 +47,45 @@ namespace Server
             cameraListener.Start();
             Console.WriteLine("Camera sharing server started.");
 
+            controlListener = new TcpListener(IPAddress.Any, 8891);
+            controlListener.Start();
+            Console.WriteLine("Control server started.");
+
             Task.WaitAll(
-                AcceptClientsAsync(screenListener, HandleScreenClientAsync),
+                AcceptUdpClientsAsync(screenUdpClient, HandleScreenUdpClientAsync),
                 AcceptClientsAsync(voiceListener, HandleVoiceClientAsync),
-                AcceptClientsAsync(cameraListener, HandleCameraClientAsync)
+                AcceptClientsAsync(cameraListener, HandleCameraClientAsync),
+                AcceptClientsAsync(controlListener, HandleControlCommands)
             );
+        }
+
+        private static async Task AcceptUdpClientsAsync(UdpClient udpClient, Func<IPEndPoint, byte[], Task> handleClient)
+        {
+            try
+            {
+                while (true)
+                {
+                    //var udpReceiveResult = await udpClient.ReceiveAsync();
+                    //IPEndPoint clientEndpoint = udpReceiveResult.RemoteEndPoint;
+                    //byte[] receivedData = udpReceiveResult.Buffer;
+
+
+                    IPEndPoint remoteEndPoint = new IPEndPoint(IPAddress.Any, 8888);
+                    byte[] connectionRequest = udpClient.Receive(ref remoteEndPoint);
+
+                    // Set the client endpoint to communicate with
+                    if (connectionRequest.Length > 0)
+                    {
+                        _ = handleClient(remoteEndPoint, null);
+                        Console.WriteLine("Connection established with client: " + remoteEndPoint.ToString());
+                    }
+
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error accepting UDP clients: {ex.Message}");
+            }
         }
 
         private static async Task AcceptClientsAsync(TcpListener listener, Func<TcpClient, Task> handleClient)
@@ -75,7 +110,7 @@ namespace Server
         {
             NetworkStream stream = client.GetStream();
             var videoSources = new FilterInfoCollection(FilterCategory.VideoInputDevice);
-            
+
             int selectedCameraIndex = 0;  // Start with the first camera
 
             if (videoSources.Count == 0)
@@ -87,7 +122,7 @@ namespace Server
             try
             {
                 videoSource = new VideoCaptureDevice(videoSources[selectedCameraIndex].MonikerString);
-                //StartCamera(videoSource, stream);
+                StartCamera(videoSource, stream);
 
                 byte[] buffer = new byte[1024];
                 while (true)
@@ -146,6 +181,7 @@ namespace Server
             VideoCapabilities selectedCapability = null;
 
             // Attempt to find the exact match for resolution and frame rate
+
             foreach (var cap in capabilities)
             {
                 if (cap.FrameSize.Width == desiredWidth &&
@@ -173,37 +209,64 @@ namespace Server
             {
                 using (MemoryStream ms = new MemoryStream())
                 {
-                    eventArgs.Frame.Save(ms, System.Drawing.Imaging.ImageFormat.Jpeg);
+                    eventArgs.Frame.Save(ms, ImageFormat.Jpeg);
                     byte[] imageData = ms.ToArray();
-                    SendImageSize(stream, imageData.Length);
-                    SendImageData(stream, imageData);
+                    byte[] sizeBytes = BitConverter.GetBytes(imageData.Length);
+
+                    stream.Write(sizeBytes, 0, sizeBytes.Length);
+                    stream.Write(imageData, 0, imageData.Length);
                 }
             };
             videoSource.Start();
         }
 
-
-
-        private static async Task HandleScreenClientAsync(TcpClient client)
+        private static async Task HandleScreenUdpClientAsync(IPEndPoint clientEndpoint, byte[] receivedData)
         {
             try
             {
-                using (NetworkStream stream = client.GetStream())
+                while (true) 
                 {
-                    Task receivingTask = ReceiveDataFromClientAsync(stream);
-                    Task sendingTask = SendScreenSharingFramesAsync(stream);
+                    if (!isScreenSharingPaused)
+                    {
 
-                    await Task.WhenAll(receivingTask, sendingTask);
+                        Bitmap screenshot = CaptureScreen();
 
+                        var qualityParam = new EncoderParameter(System.Drawing.Imaging.Encoder.Quality, 50L); // Adjust quality (1-100)
+                        var jpegCodec = GetEncoder(ImageFormat.Jpeg);
+                        var encoderParams = new EncoderParameters(1);
+                        encoderParams.Param[0] = qualityParam;
+
+                        using (var ms = new MemoryStream())
+                        {
+                            // Save the bitmap to the memory stream in JPEG format with compression
+                            screenshot.Save(ms, jpegCodec, encoderParams);
+                            byte[] imageData = ms.ToArray();
+
+                            // Send the total length as an integer first
+                            byte[] lengthBytes = BitConverter.GetBytes(imageData.Length);
+                            screenUdpClient.Send(lengthBytes, lengthBytes.Length, clientEndpoint);
+
+                            // Chunk and send image data in smaller packets
+                            int packetSize = 506;
+                            for (int i = 0; i < imageData.Length; i += packetSize)
+                            {
+                                int remainingBytes = imageData.Length - i;
+                                int currentPacketSize = Math.Min(packetSize, remainingBytes);
+                                byte[] packetData = new byte[currentPacketSize];
+                                Array.Copy(imageData, i, packetData, 0, currentPacketSize);
+                                screenUdpClient.Send(packetData, currentPacketSize, clientEndpoint);
+                            }
+                        }
+                    }
+
+                    await Task.Delay(1000 / fps); // Adjust frame rate as needed
                 }
+
+
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error handling client: {ex.Message}");
-            }
-            finally
-            {
-                client.Close();
+                Console.WriteLine($"Error handling screen client: {ex.Message}");
             }
         }
 
@@ -244,70 +307,73 @@ namespace Server
             }
         }
 
-        private static async Task ReceiveDataFromClientAsync(NetworkStream stream)
+        private static async Task HandleControlCommands(TcpClient client)
         {
+            Console.WriteLine("Control client connected!");
+            while (true)
+            {
+                await Task.Run(() => ReceiveDataFromClientAsync(client));
+            }
+        }
+
+        private static async Task ReceiveDataFromClientAsync(TcpClient client)
+        {
+            NetworkStream stream = client.GetStream();
+            byte[] buffer = new byte[1024];
+
             try
             {
-                byte[] buffer = new byte[1024];
-                while (true)
+                while (client.Connected)
                 {
                     int bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length);
-                    if (bytesRead > 0)
+                    string receivedData = Encoding.UTF8.GetString(buffer, 0, bytesRead);
+
+                    if (bytesRead == 0)
                     {
-                        string receivedData = Encoding.UTF8.GetString(buffer, 0, bytesRead);
-
-                        
-                        if (receivedData.StartsWith("fps"))
-                        {
-                            string numberString = receivedData.Substring(3);
-
-                            if (int.TryParse(numberString, out int number))
-                            {
-                                fps = number;
-                            }
-                        }
-
-                        if (receivedData.StartsWith("compression"))
-                        {
-                            string numberString = receivedData.Substring(11);
-
-                            if (int.TryParse(numberString, out int number))
-                            {
-                                compression = number;
-                            }
-                        }
-
-
-                        switch (receivedData)
-                        {
-                            case "pauseCam":
-                                videoSource.Stop();
-                                break;
-                            case "resumeCam":
-                                videoSource.Start();
-                                break;
-
-                            case "info":
-                                byte[] responseBytesInfo = Encoding.UTF8.GetBytes("info" + info);
-                                await stream.WriteAsync(responseBytesInfo, 0, responseBytesInfo.Length);
-                                break;
-                                
-
-                            case "pauseScreen":
-                                isScreenSharingPaused = true;
-                                break;
-                                
-
-                            case "resumeScreen":
-                                isScreenSharingPaused = false;
-                                break;
-
-                            default: break;
-                        }
-
-                        Console.WriteLine("Received data from client: " + receivedData);
+                        break; // Client disconnected
                     }
+
+                    if (receivedData.StartsWith("fps"))
+                    {
+                        string numberString = receivedData.Substring(3);
+
+                        if (int.TryParse(numberString, out int number))
+                        {
+                            fps = number;
+                        }
+                    }
+
+
+                    switch (receivedData)
+                    {
+                        case "pauseCam":
+                            videoSource.Stop();
+                            break;
+                        case "resumeCam":
+                            videoSource.Start();
+                            break;
+
+                        case "info":
+                            byte[] responseBytesInfo = Encoding.UTF8.GetBytes("info" + info);
+                            await stream.WriteAsync(responseBytesInfo, 0, responseBytesInfo.Length);
+                            break;
+
+
+                        case "pauseScreen":
+                            isScreenSharingPaused = true;
+                            break;
+
+
+                        case "resumeScreen":
+                            isScreenSharingPaused = false;
+                            break;
+
+                        default: break;
+                    }
+
+                    Console.WriteLine("Received data from client: " + receivedData);
                 }
+                
             }
             catch (IOException ex) when (ex.InnerException is SocketException)
             {
@@ -319,46 +385,16 @@ namespace Server
             }
         }
 
-        private static async Task SendScreenSharingFramesAsync(NetworkStream stream)
+        private static async Task SendScreenSharingFramesAsync(IPEndPoint clientEndpoint)
         {
             try
             {
                 while (true)
                 {
-                    if (!isScreenSharingPaused)
-                    {
-                        Bitmap screenshot = CaptureScreen();
 
-                        byte[] imageData;
-                        using (MemoryStream ms = new MemoryStream())
-                        {
-                            if(compression == 100)
-                            {
-                                screenshot.Save(ms, System.Drawing.Imaging.ImageFormat.Bmp);
-                            }
-                            else
-                            {
-                                var qualityParam = new EncoderParameter(System.Drawing.Imaging.Encoder.Quality, compression); // Adjust quality (1-100)
-                                var jpegCodec = GetEncoder(ImageFormat.Jpeg);
-                                var encoderParams = new EncoderParameters(1);
-                                encoderParams.Param[0] = qualityParam;
 
-                                screenshot.Save(ms, jpegCodec, encoderParams);
-                            }
-
-                            imageData = ms.ToArray();
-                        }
-                        SendImageSize(stream, imageData.Length);
-                        SendImageData(stream, imageData);
-                    }
-
-                    await Task.Delay(1000 / fps);
+                    await Task.Delay(1000 / fps); // Adjust frame rate as needed
                 }
-            }
-            catch (IOException ex) when (ex.InnerException is SocketException)
-            {
-                // Client disconnected
-                Console.WriteLine("Client disconnected.");
             }
             catch (Exception ex)
             {
@@ -366,33 +402,11 @@ namespace Server
             }
         }
 
-        private static void SendImageSize(NetworkStream stream, int imageSize)
-        {
-            byte[] sizeBytes = BitConverter.GetBytes(imageSize);
-            stream.Write(sizeBytes, 0, sizeBytes.Length);
-        }
-
-        private static void SendImageData(NetworkStream stream, byte[] imageData)
-        {
-            try
-            {
-                stream.Write(imageData, 0, imageData.Length);
-            }
-            catch (IOException e) when (e.InnerException is SocketException)
-            {
-                Console.WriteLine("Client disconnected.");
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine("Error sending image data: " + e.Message);
-            }
-
-        }
-
         private static ImageCodecInfo GetEncoder(ImageFormat format)
         {
             return ImageCodecInfo.GetImageDecoders().FirstOrDefault(codec => codec.FormatID == format.Guid);
         }
+
 
         static Bitmap CaptureScreen()
         {

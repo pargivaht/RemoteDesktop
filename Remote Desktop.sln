@@ -17,7 +17,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HoleServer", "HoleServer\Ho
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Client2", "Client2\Client2.csproj", "{A81ED171-8D5A-498E-8E10-E9582DDE79E1}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Server", "..\Remote Desktop tcp\Server\Server.csproj", "{3734B424-CBF9-449E-90CA-DCC8C627F983}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Server", "Server\Server.csproj", "{F31AC7F3-2BFD-4BBE-B954-868965363678}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -53,10 +53,10 @@ Global
 		{A81ED171-8D5A-498E-8E10-E9582DDE79E1}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A81ED171-8D5A-498E-8E10-E9582DDE79E1}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A81ED171-8D5A-498E-8E10-E9582DDE79E1}.Release|Any CPU.Build.0 = Release|Any CPU
-		{3734B424-CBF9-449E-90CA-DCC8C627F983}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{3734B424-CBF9-449E-90CA-DCC8C627F983}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{3734B424-CBF9-449E-90CA-DCC8C627F983}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{3734B424-CBF9-449E-90CA-DCC8C627F983}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F31AC7F3-2BFD-4BBE-B954-868965363678}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F31AC7F3-2BFD-4BBE-B954-868965363678}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F31AC7F3-2BFD-4BBE-B954-868965363678}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F31AC7F3-2BFD-4BBE-B954-868965363678}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

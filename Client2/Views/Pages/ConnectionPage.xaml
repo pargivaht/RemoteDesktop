@@ -23,10 +23,10 @@
         <Menu Margin="15,0,0,0">
             <ui:MenuItem Header="Connection" Icon="{ui:SymbolIcon Desktop24}">
                 <ui:MenuItem Header="Power" Icon="{ui:SymbolIcon Power24}">
-                    <MenuItem Header="Shutdown" Icon="{ui:SymbolIcon Power24}"/>
-                    <MenuItem Header="Restart" Icon="{ui:SymbolIcon ArrowCounterclockwise24}"/>
-                    <MenuItem Header="Sleep" Icon="{ui:SymbolIcon WeatherMoon24}"/>
-                    <MenuItem Header="LogOut" Icon="{ui:SymbolIcon SignOut24}"/>
+                    <MenuItem Header="Shutdown" Icon="{ui:SymbolIcon Power24}" Click="Shutdown_Click"/>
+                    <MenuItem Header="Restart" Icon="{ui:SymbolIcon ArrowCounterclockwise24}" Click="Restart_Click"/>
+                    <MenuItem Header="Sleep" Icon="{ui:SymbolIcon WeatherMoon24}" Click="Sleep_Click"/>
+                    <MenuItem Header="LogOut" Icon="{ui:SymbolIcon SignOut24}" Click="LogOut_Click"/>
                 </ui:MenuItem>
                 
                 <ui:MenuItem Header="Other" Icon="{ui:SymbolIcon Apps24}">
@@ -38,10 +38,10 @@
                 </ui:MenuItem>
 
                 <ui:MenuItem Header="Fun" Icon="{ui:SymbolIcon EmojiLaugh24}">
-                    <ui:MenuItem Icon="{ui:SymbolIcon GlobeDesktop24}" Header="Open Website"/>
-                    <ui:MenuItem Icon="{ui:SymbolIcon Cd16}" Header="Open Cd Tray"/>
-                    <ui:MenuItem Icon="{ui:SymbolIcon EmojiSad24}" Header="BSOD"/>
-                    <ui:MenuItem Icon="{ui:SymbolIcon CommentArrowLeft24}" Header="Message Box"/>
+                    <ui:MenuItem Icon="{ui:SymbolIcon GlobeDesktop24}" Header="Open Website" Click="OpenWeb_Click"/>
+                    <ui:MenuItem Icon="{ui:SymbolIcon Cd16}" Header="Open Cd Tray" Click="OpenTray_Click"/>
+                    <ui:MenuItem Icon="{ui:SymbolIcon EmojiSad24}" Header="BSOD" Click="BSOD_Click"/>
+                    <ui:MenuItem Icon="{ui:SymbolIcon CommentArrowLeft24}" Header="Message Box" Click="SendMsg_Click"/>
 
                     <ui:MenuItem Header="Gdi" Icon="{ui:SymbolIcon ColorLine24}">
                         <ui:MenuItem Icon="{ui:SymbolIcon ArrowBidirectionalUpDown24}" Header="Flip Screen"/>
@@ -78,6 +78,7 @@
                 <Slider Grid.Column="1" Margin="8,0,0,0" x:Name="compression_slider" Value="100" SmallChange="1" Maximum="100" AutoToolTipPlacement="TopLeft" LargeChange="10" ValueChanged="compression_slider_ValueChanged"/>
                 <ui:TextBlock Text="Quality" FontSize="14"  Grid.Column="0" Margin="0,1"/>
             </Grid>
+
 
 
         </Menu>

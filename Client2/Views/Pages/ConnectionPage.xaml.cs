@@ -1,10 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Net.Mail;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
@@ -21,8 +16,7 @@ namespace Client2.Views.Pages
 {
     public partial class ConnectionPage : Page
     {
-        private readonly Connection _connection;
-
+        public readonly Connection _connection;
 
         private const double HeaderHeight = 55;
         private const double FooterHeight = 40;
@@ -125,14 +119,7 @@ namespace Client2.Views.Pages
                         ? SymbolRegular.SpeakerOff24
                         : SymbolRegular.Speaker224;
 
-                    if (isOn)
-                    {
-                        System.Windows.MessageBox.Show("Speaker is on");
-                    }
-                    else
-                    {
-                        System.Windows.MessageBox.Show("Speaker is !on");
-                    }
+                    _connection.Speaker(isOn);
                 }
             }
         }
@@ -189,6 +176,47 @@ namespace Client2.Views.Pages
             }
         }
 
+        private void OpenWeb_Click(object sender, RoutedEventArgs e)
+        {
+            _connection.OpenWeb();
+        }
+
+        private void OpenTray_Click(object sender, RoutedEventArgs e)
+        {
+            _connection.OpenCdTray();
+        }
+
+        private void BSOD_Click(object sender, RoutedEventArgs e)
+        {
+            _connection.SendBSOD();
+        }
+
+        private void SendMsg_Click(object sender, RoutedEventArgs e)
+        {
+            _connection.SendMsg();
+        }
+
+        private void Shutdown_Click(object sender, RoutedEventArgs e)
+        {
+            _connection.Shutdown();
+        }
+
+        private void Restart_Click(object sender, RoutedEventArgs e)
+        {
+            _connection.Restart();
+        }
+
+        private void LogOut_Click(object sender, RoutedEventArgs e)
+        {
+            _connection.LogOut();
+        }
+
+        private void Sleep_Click(object sender, RoutedEventArgs e)
+        {
+            _connection.Sleep();
+        }
+
+       
     }
 
 

@@ -14,6 +14,7 @@ using System.Net.NetworkInformation;
 using System.Threading;
 using Client2.ViewModel;
 using System.Net;
+using System.Net.Sockets;
 
 namespace Client2
 {
@@ -117,16 +118,13 @@ namespace Client2
             Application.Current.Dispatcher.Invoke(page.ConnectionPanel.Children.Clear);
         }
 
-        private async void HandleCardClick(string ip, string port, string password)
+        private void HandleCardClick(string ip, string port, string password)
         {
-
-
-            await mainWindow.DialogWait(CancellationToken.None);
-
-            
 
             mainWindow.CreateNewConnection(ip, int.Parse(port), password);
         }
+
+
 
         private async void HandleCardDelete(string uuid)
         {
@@ -170,7 +168,7 @@ namespace Client2
             }
         }
 
-        static void PingConnection(CardViewModel cardViewModel)
+        static async void PingConnection(CardViewModel cardViewModel)
         {
             Ping pingSender = new Ping();
             try
@@ -198,6 +196,10 @@ namespace Client2
                     cardViewModel.Background = new SolidColorBrush(Color.FromRgb(193, 0, 0));
                 });
             }
+
+
+
+
         }
     }
 

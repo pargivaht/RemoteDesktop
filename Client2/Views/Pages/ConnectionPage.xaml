@@ -44,8 +44,8 @@
                     <ui:MenuItem Icon="{ui:SymbolIcon CommentArrowLeft24}" Header="Message Box" Click="SendMsg_Click"/>
 
                     <ui:MenuItem Header="Gdi" Icon="{ui:SymbolIcon ColorLine24}">
-                        <ui:MenuItem Icon="{ui:SymbolIcon ArrowBidirectionalUpDown24}" Header="Flip Screen"/>
-                        <ui:MenuItem Icon="{ui:SymbolIcon Color24}" Header="Invert Screen"/>
+                        <ui:MenuItem Icon="{ui:SymbolIcon ArrowBidirectionalUpDown24}" Header="Flip Screen" Click="flipScr_Click"/>
+                        <ui:MenuItem Icon="{ui:SymbolIcon Color24}" Header="Invert Screen" Click="invertScr_Click"/>
 
                     </ui:MenuItem>
                 </ui:MenuItem>

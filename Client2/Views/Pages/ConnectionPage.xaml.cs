@@ -49,23 +49,6 @@ namespace Client2.Views.Pages
 
         private void OnScreenUpdated(Image image)
         {
-            //if (image is Bitmap bitmap)
-            //{
-            //    BitmapSource wpfImage = ConvertToBitmapImage(bitmap);
-
-            //    Dispatcher.Invoke(() =>
-            //    {
-            //        pictureBoxScreen.Source = wpfImage;
-            //    });
-
-            //    // Dispose the bitmap to prevent memory leaks
-            //    bitmap.Dispose();
-            //}
-            //else
-            //{
-            //    Console.WriteLine("Received image is not a Bitmap.");
-            //}
-
             Dispatcher.Invoke(() =>
             {
                 pictureBoxScreen.Source = ConvertToBitmapImage(image);
@@ -81,25 +64,6 @@ namespace Client2.Views.Pages
             });
         }
 
-        //private static BitmapSource ConvertToBitmapImage(Image image)
-        //{
-        //    Bitmap bitmap = image is Bitmap bmp ? bmp : new Bitmap(image);
-
-        //    IntPtr hBitmap = bitmap.GetHbitmap(); // Get unmanaged HBITMAP
-        //    try
-        //    {
-        //        return Imaging.CreateBitmapSourceFromHBitmap(
-        //            hBitmap,
-        //            IntPtr.Zero,
-        //            Int32Rect.Empty,
-        //            BitmapSizeOptions.FromEmptyOptions());
-        //    }
-        //    finally
-        //    {
-        //        DeleteObject(hBitmap); // Release unmanaged memory
-        //        if (!(image is Bitmap)) bitmap.Dispose(); // Only dispose if we created a new Bitmap
-        //    }
-        //}
 
 
         private static BitmapSource ConvertToBitmapImage(Image image)
@@ -277,8 +241,15 @@ namespace Client2.Views.Pages
             sys.Show();
         }
 
+        private void flipScr_Click(object sender, RoutedEventArgs e)
+        {
+            _connection.FlipScreen();
+        }
 
-
+        private void invertScr_Click(object sender, RoutedEventArgs e)
+        {
+            _connection.InvertScreen();
+        }
     }
 
 

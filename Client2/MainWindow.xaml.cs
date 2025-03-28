@@ -48,8 +48,6 @@ namespace Client2
         {
 
 
-
-
         }
 
         public void CreateNewConnection(string ip, int port, string password)

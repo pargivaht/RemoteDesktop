@@ -1,10 +1,13 @@
 ﻿using System;
+using System.Drawing;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Documents;
 using System.Windows.Input;
+using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
@@ -14,8 +17,12 @@ using Image = System.Drawing.Image;
 
 namespace Client2.Views.Pages
 {
+
     public partial class ConnectionPage : Page
     {
+        [DllImport("gdi32.dll")]
+        private static extern bool DeleteObject(IntPtr hObject);
+
         public readonly Connection _connection;
 
         private const double HeaderHeight = 55;
@@ -36,17 +43,35 @@ namespace Client2.Views.Pages
 
             _connection = new Connection(ip, port, password, this, window);
 
-            _connection.ScreenUpdated += OnScreenUpdated;
-            _connection.CameraUpdated += OnCameraUpdated;
+            Connection.ScreenUpdated += OnScreenUpdated;
+            Connection.CameraUpdated += OnCameraUpdated;
         }
 
         private void OnScreenUpdated(Image image)
         {
+            //if (image is Bitmap bitmap)
+            //{
+            //    BitmapSource wpfImage = ConvertToBitmapImage(bitmap);
+
+            //    Dispatcher.Invoke(() =>
+            //    {
+            //        pictureBoxScreen.Source = wpfImage;
+            //    });
+
+            //    // Dispose the bitmap to prevent memory leaks
+            //    bitmap.Dispose();
+            //}
+            //else
+            //{
+            //    Console.WriteLine("Received image is not a Bitmap.");
+            //}
+
             Dispatcher.Invoke(() =>
             {
                 pictureBoxScreen.Source = ConvertToBitmapImage(image);
             });
         }
+
 
         private void OnCameraUpdated(Image image)
         {
@@ -56,19 +81,48 @@ namespace Client2.Views.Pages
             });
         }
 
-        private BitmapImage ConvertToBitmapImage(Image image)
-        {
-            using var ms = new MemoryStream();
-            image.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
-            ms.Position = 0;
+        //private static BitmapSource ConvertToBitmapImage(Image image)
+        //{
+        //    Bitmap bitmap = image is Bitmap bmp ? bmp : new Bitmap(image);
 
-            var bitmap = new BitmapImage();
-            bitmap.BeginInit();
-            bitmap.StreamSource = ms;
-            bitmap.CacheOption = BitmapCacheOption.OnLoad;
-            bitmap.EndInit();
-            return bitmap;
+        //    IntPtr hBitmap = bitmap.GetHbitmap(); // Get unmanaged HBITMAP
+        //    try
+        //    {
+        //        return Imaging.CreateBitmapSourceFromHBitmap(
+        //            hBitmap,
+        //            IntPtr.Zero,
+        //            Int32Rect.Empty,
+        //            BitmapSizeOptions.FromEmptyOptions());
+        //    }
+        //    finally
+        //    {
+        //        DeleteObject(hBitmap); // Release unmanaged memory
+        //        if (!(image is Bitmap)) bitmap.Dispose(); // Only dispose if we created a new Bitmap
+        //    }
+        //}
+
+
+        private static BitmapSource ConvertToBitmapImage(Image image)
+        {
+            if (image is not Bitmap bitmap)
+            {
+                Console.WriteLine(image.GetType().ToString());
+                bitmap = new Bitmap(image);
+            }
+
+            IntPtr hBitmap = bitmap.GetHbitmap(); // Unmanaged resource
+
+            BitmapSource bitmapSource = Imaging.CreateBitmapSourceFromHBitmap(
+                hBitmap,
+                IntPtr.Zero,
+                Int32Rect.Empty,
+                BitmapSizeOptions.FromEmptyOptions());
+
+            DeleteObject(hBitmap); // Free unmanaged memory
+
+            return bitmapSource;
         }
+
 
         private void ConnectionPage_Loaded(object sender, RoutedEventArgs e)
         {
@@ -216,7 +270,15 @@ namespace Client2.Views.Pages
             _connection.Sleep();
         }
 
-       
+        private async void SysInfo_Click(object sender, RoutedEventArgs e)
+        {
+
+            SystemInfo sys = new SystemInfo(await _connection.SysInfo());
+            sys.Show();
+        }
+
+
+
     }
 
 

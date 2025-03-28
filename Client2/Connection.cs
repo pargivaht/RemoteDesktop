@@ -11,6 +11,8 @@ using Image = System.Drawing.Image;
 using Client2;
 using System.Windows;
 using Client2.Views.Pages;
+using Newtonsoft.Json;
+using System.Windows.Media.Imaging;
 
 public class Connection
 {
@@ -22,24 +24,27 @@ public class Connection
 
     static MainWindow mainWindow = (MainWindow)Application.Current.MainWindow;
 
-
     public MainWindow Window { get; }
 
-    public event Action<Image> ScreenUpdated;
-    public event Action<Image> CameraUpdated;
+    public static event Action<Image> ScreenUpdated;
+    public static event Action<Image> CameraUpdated;
 
 
     static TcpClient cameraClient;
     static NetworkStream cameraStream;
 
-    public TcpClient client;
-    private CancellationTokenSource cancellationTokenSource;
+    static TcpClient client;
+    static NetworkStream stream;
+
+
+    static TcpClient comClient;
+    static NetworkStream comStream;
 
     static WaveOutEvent waveOut;
-    static TcpClient client2;
+    static TcpClient audioClient;
     static BufferedWaveProvider bufferedWaveProvider;
 
-    static string info;
+    private static CancellationTokenSource cancellationTokenSource;
 
     private bool MicImageSwitch = false;
     private bool SpeakerImageSwitch = false;
@@ -50,8 +55,8 @@ public class Connection
     private static int fps = 60;
     private static int compression = 100;
 
+    public static SystemInfoList systemInfo;
 
-    static NetworkStream stream;
 
     public Connection(string ip, int port, string password, Page page, MainWindow window)
     {
@@ -63,35 +68,71 @@ public class Connection
         ConnectToServer();
     }
 
-    public async void ConnectToServer()
+    public static async void ConnectToServer()
     {
         try
         {
             client = new TcpClient(Ip, 8888);  // for screen
-            cameraClient = new TcpClient(Ip, 8890);  // for camera
-            cancellationTokenSource = new CancellationTokenSource();
             stream = client.GetStream();
+
+            cameraClient = new TcpClient(Ip, 8890);  // for camera
             cameraStream = cameraClient.GetStream();
 
-           
-            SendData("info");
+            comClient = new TcpClient(Ip, 8892);  // for commands
+            comStream = comClient.GetStream();
 
-            byte[] buffer = new byte[1024];
-            int bytesRead = await stream?.ReadAsync(buffer, 0, buffer.Length);
-            string response = Encoding.UTF8.GetString(buffer, 0, bytesRead);
-            for (int i = 0; i < 100;)
-            {
-                if (response.StartsWith("info"))
+            cancellationTokenSource = new CancellationTokenSource();
+
+
+
+            //SendData("info");
+
+            //byte[] buffer = new byte[1024];
+            //int bytesRead = await stream?.ReadAsync(buffer, 0, buffer.Length);
+            //string response = Encoding.UTF8.GetString(buffer, 0, bytesRead);
+            //for (int i = 0; i < 100;)
+            //{
+            //    if (response.StartsWith("info"))
+            //    {
+            //        string info = response.Substring(4);
+
+            //        //try
+            //        //{
+            //        //    SystemInfoList list = JsonConvert.DeserializeObject<SystemInfoList>(info);
+            //        //    if (list != null)
+            //        //    {
+            //        //        SystemInfo systemInfo = new SystemInfo(list);
+            //        //        Window.SetTitle(list.Title);
+            //        //    }
+            //        //    else
+            //        //    {
+            //        //        Console.WriteLine("Failed to parse system info.");
+            //        //    }
+            //        //}
+            //        //catch (JsonException ex)
+            //        //{
+            //        //    Console.WriteLine("Error deserializing system info: " + ex.Message);
+            //        //}
+
+            //        Window.SetTitle(info);
+
+            //        break;
+            //    }
+            //    i++;
+            //}
+
+            await Task.WhenAll(
+                Task.Run(() => ReceiveScreen(cancellationTokenSource.Token)),
+                Task.Factory.StartNew(async () => 
                 {
-                    info = response.Substring(4);
-                    Window.SetTitle(info);
-                    break;
-                }
-            }
-
-            Task.Run(() => ReceiveScreen(cancellationTokenSource.Token));
-
-            //Task.Run(() => ReceiveCameraStream(cancellationTokenSource.Token), cancellationTokenSource.Token);
+                    while (true)
+                    {
+                       await SendData(Console.ReadLine());
+                    }
+                }),
+                //Task.Run(() => ReceiveCameraStream(cancellationTokenSource.Token)),
+                Task.Run(() => ReceiveCommands(cancellationTokenSource.Token))
+            );
         }
         catch (Exception ex)
         {
@@ -107,7 +148,7 @@ public class Connection
         {
             if (toggle)
             {
-                client2 = new TcpClient(Ip, 8889);
+                audioClient = new TcpClient(Ip, 8889);
                 Console.WriteLine("Connected to audio server.");
 
                 waveOut = new WaveOutEvent();
@@ -118,9 +159,9 @@ public class Connection
                 waveOut.Play();
                 Console.WriteLine("Playing audio...");
 
-                using (BinaryReader reader = new BinaryReader(client2.GetStream()))
+                using (BinaryReader reader = new BinaryReader(audioClient.GetStream()))
                 {
-                    while (client2.Connected)
+                    while (audioClient.Connected)
                     {
                         // Read the length of the audio data
                         int length = reader.ReadInt32();
@@ -136,8 +177,8 @@ public class Connection
             else
             {
                 waveOut?.Stop();
-                client2?.Close();
-                client2?.Dispose();
+                audioClient?.Close();
+                audioClient ?.Dispose();
             }
         }
         catch { }
@@ -150,7 +191,7 @@ public class Connection
         {
             if (toggle)
             {
-                client2 = new TcpClient(Ip, 8891);
+                audioClient = new TcpClient(Ip, 8891);
                 Console.WriteLine("Connected to speaker server.");
 
                 waveOut = new WaveOutEvent();
@@ -161,9 +202,9 @@ public class Connection
                 waveOut.Play();
                 Console.WriteLine("Playing audio...");
 
-                using (BinaryReader reader = new BinaryReader(client2.GetStream()))
+                using (BinaryReader reader = new BinaryReader(audioClient.GetStream()))
                 {
-                    while (client2.Connected)
+                    while (audioClient.Connected)
                     {
                         // Read the length of the audio data
                         int length = reader.ReadInt32();
@@ -179,37 +220,37 @@ public class Connection
             else
             {
                 waveOut?.Stop();
-                client2?.Close();
-                client2?.Dispose();
+                audioClient ?.Close();
+                audioClient?.Dispose();
             }
         }
         catch { }
     }
 
-    public void SendData(string stringData)
+    public static async Task SendData(string stringData)
     {
         byte[] data = Encoding.UTF8.GetBytes(stringData);
-        Task.Run(() => SendDataByte(data));
+        await Task.Run(() => SendDataByte(data));
     }
 
-    public async void SendDataByte(byte[] data)
+    public static async void SendDataByte(byte[] data)
     {
         try
         {
-            if (client == null || !client.Connected)
+            if (comClient == null || !comClient.Connected)
             {
                 ConnectToServer();
             }
 
-            if (client != null && client.Connected)
+            if (comClient != null && comClient.Connected)
             {
-                stream = client.GetStream();
-                await stream.WriteAsync(data, 0, data.Length);
-                stream.Flush(); // Flush the stream to send the data immediately
+                comStream = comClient.GetStream();
+                await comStream.WriteAsync(data, 0, data.Length);
+                comStream.Flush(); // Flush the stream to send the data immediately
             }
             else
             {
-                Console.WriteLine("Client is not connected to the server.");
+                Console.WriteLine("Command clinet is not connected to the server.");
             }
         }
         catch (Exception ex)
@@ -218,9 +259,9 @@ public class Connection
         }
     }
 
-    private async Task ReceiveScreen(CancellationToken cancellationToken)
+    private static async Task ReceiveScreen(CancellationToken cancellationToken)
     {
-        SendData("resumeScreen");
+        await SendData("resumeScreen");
 
         while (!cancellationToken.IsCancellationRequested)
         {
@@ -234,6 +275,7 @@ public class Connection
                     break;
                 }
 
+                
 
                 // Read the number of frames in the batch
                 byte[] frameCountBytes = new byte[sizeof(int)];
@@ -334,6 +376,74 @@ public class Connection
 
         cameraStream.Close();
         cameraClient.Close();
+    }
+
+    private static async Task ReceiveCommands(CancellationToken cancellationToken)
+    {
+        try
+        {
+            byte[] buffer = new byte[8096];
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                int bytesRead = await comStream.ReadAsync(buffer, 0, buffer.Length);
+                if (bytesRead > 0)
+                {
+
+                    string receivedData = Encoding.UTF8.GetString(buffer, 0, bytesRead);
+                    Console.WriteLine("Received command: " + receivedData);
+
+                    if (receivedData.StartsWith("info"))
+                    {
+                        string jsonData = receivedData.Substring(4);
+                        try
+                        {
+                            systemInfo = JsonConvert.DeserializeObject<SystemInfoList>(jsonData);
+
+                            if (systemInfo != null)
+                            {
+                                await Application.Current.Dispatcher.BeginInvoke(() =>
+                                {
+                                    mainWindow.SetTitle(systemInfo.Title); // UI update happens immediately
+                                });
+                            }
+                            else
+                            {
+                                Console.WriteLine("Failed to parse system info.");
+                            }
+                        }
+                        catch (JsonException ex)
+                        {
+                            Console.WriteLine("Error deserializing system info: " + ex.Message);
+                        }
+                    }
+
+
+                }
+
+
+            }
+        }
+        catch (IOException ex) when (ex.InnerException is SocketException)
+        {
+            Console.WriteLine("Commands client disconnected.");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("Error receiving commands: " + ex.Message);
+        }
+        finally
+        {
+            // Ensure proper cleanup
+            if (stream != null)
+            {
+                stream.Close();
+            }
+
+            if (comClient != null && comClient.Connected)
+            {
+                comClient.Close();
+            }
+        }
     }
 
     public void ChangeFps(int _fps)
@@ -509,6 +619,22 @@ public class Connection
     public void LogOut()
     {
         SendData("logout");
+    }
+
+
+
+    public async Task<SystemInfoList> SysInfo()
+    {
+        await SendData("info");
+
+        while(true)
+        {
+            if (systemInfo != null)
+            {
+                return systemInfo;
+            }
+            await Task.Delay(100);
+        }
     }
 
 }

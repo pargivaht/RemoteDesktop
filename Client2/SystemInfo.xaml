@@ -1,0 +1,56 @@
+﻿<ui:FluentWindow x:Class="Client2.SystemInfo"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+        xmlns:pages="clr-namespace:Client2.Views.Pages"
+        xmlns:tray="http://schemas.lepo.co/wpfui/2022/xaml/tray"
+        xmlns:local="clr-namespace:Client2"
+        WindowBackdropType="Mica"
+        WindowCornerPreference="Round"
+        WindowStartupLocation="CenterScreen"         
+        mc:Ignorable="d"
+        ExtendsContentIntoTitleBar="True"
+        Title="SystemInfo" Height="650" Width="500" Loaded="FluentWindow_Loaded">
+    <Grid>
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+            
+
+
+            <ScrollViewer Grid.Row="1" Margin="20"
+                          VerticalScrollBarVisibility="Auto"
+                          HorizontalScrollBarVisibility="Auto">
+                <TreeView x:Name="rvInfo">
+                    <TreeViewItem Header="General Info" x:Name="BasicInfo"/>
+                    <TreeViewItem Header="CPU" x:Name="CPU"/>
+                    <TreeViewItem Header="RAM" x:Name="RAM"/>
+                    <TreeViewItem Header="GPU" x:Name="GPU"/>
+                    <TreeViewItem Header="Storage" x:Name="storage"/>
+                    <TreeViewItem Header="Motherboard" x:Name="motherboard"/>
+                    <TreeViewItem Header="Network" x:Name="network"/>
+                    <TreeViewItem Header="Battery" x:Name="battery"/>
+                    <TreeViewItem Header="Display" x:Name="display"/>
+                    <TreeViewItem Header="Security" x:Name="security"/>
+                    <TreeViewItem Header="Virtualization" x:Name="virtualization"/>
+                </TreeView>
+            </ScrollViewer>
+
+
+
+            <ui:TitleBar
+            Title="System Info"
+            Grid.Row="0"
+            x:Name="Titlebar"/>
+        </Grid>
+
+
+        <ContentPresenter x:Name="RootContentDialogPresenter" Grid.Row="0" />
+
+
+    </Grid>
+</ui:FluentWindow>

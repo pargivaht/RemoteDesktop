@@ -13,7 +13,10 @@ using System.Drawing.Imaging;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
-using System.Security.Cryptography;
+using System.Net.NetworkInformation;
+using System.Management;
+using Newtonsoft.Json;
+using Hardware.Info;
 
 namespace Server
 {
@@ -34,13 +37,14 @@ namespace Server
         static TcpListener voiceListener;
         static TcpListener cameraListener;
         static TcpListener speakerListener;
+        static TcpListener comsListener;
+
 
         static FilterInfoCollection videoDevices;
         static int currentDeviceIndex = 1;
         static VideoCaptureDevice videoSource;
 
         static bool isScreenSharingPaused = false;
-
         static bool isMicAudio = false;
         static bool isSystemAudio = false;
         static bool isCDTrayOpen = false;
@@ -49,33 +53,61 @@ namespace Server
         static public int compression = 100;
 
         static string info = "Remote Desktop: " + Environment.UserName + "@" + Environment.MachineName + ". Monitor Count: " + SystemInformation.MonitorCount;
+        static string systemInfo;
+        static IHardwareInfo hardwareInfo;
 
         static async Task Main(string[] args)
         {
+            Console.SetWindowSize(110, 25);
             
 
             screenListener = new TcpListener(IPAddress.Any, 8888);
             screenListener.Start();
-            Console.WriteLine("Screen sharing server started.");
+            Console.WriteLine("Screen sharing service started.");
 
             voiceListener = new TcpListener(IPAddress.Any, 8889);
             voiceListener.Start();
-            Console.WriteLine("Voice sharing server started.");
+            Console.WriteLine("Voice sharing service started.");
 
             cameraListener = new TcpListener(IPAddress.Any, 8890);
             cameraListener.Start();
-            Console.WriteLine("Camera sharing server started.");
+            Console.WriteLine("Camera sharing service started.");
 
             speakerListener = new TcpListener(IPAddress.Any, 8891);
             speakerListener.Start();
-            Console.WriteLine("Speaker sharing server started.");
+            Console.WriteLine("Speaker sharing service started.");
 
-            Task.WaitAll(
+            comsListener = new TcpListener(IPAddress.Any, 8892);
+            comsListener.Start();
+            Console.WriteLine("Communication service started.");
+
+
+
+            Console.WriteLine("Getting system info...");
+            _ = Task.Run(async () => systemInfo = await Task.Run(GetSystemInfo));
+
+            await Task.WhenAll(
+                IsInfoReady(),
                 AcceptClientsAsync(screenListener, HandleScreenClientAsync),
                 AcceptClientsAsync(voiceListener, HandleVoiceClientAsync),
                 //AcceptClientsAsync(cameraListener, HandleCameraClientAsync),
-                AcceptClientsAsync(speakerListener, HandleSpeakerClientAsync)
+                AcceptClientsAsync(speakerListener, HandleSpeakerClientAsync),
+                AcceptClientsAsync(comsListener, HandleComsClinetAsync)
             );
+        }
+
+        private static async Task IsInfoReady()
+        {
+            while (true)
+            {
+                if (systemInfo != null)
+                {
+                    Console.WriteLine("Done getting system info!");
+                    await SendData("info" + systemInfo, comsListener.AcceptTcpClient());
+                    return;
+                }
+               await Task.Delay(500);
+            }
         }
 
         private static async Task AcceptClientsAsync(TcpListener listener, Func<TcpClient, Task> handleClient)
@@ -208,18 +240,15 @@ namespace Server
             videoSource.Start();
         }
 
-
-
         private static async Task HandleScreenClientAsync(TcpClient client)
         {
             try
             {
                 using (NetworkStream stream = client.GetStream())
                 {
-                    Task receivingTask = ReceiveDataFromClientAsync(stream);
                     Task sendingTask = SendScreenSharingFramesAsync(stream);
 
-                    await Task.WhenAll(receivingTask, sendingTask);
+                    await Task.WhenAll(sendingTask);
 
                 }
             }
@@ -309,7 +338,6 @@ namespace Server
             }
         }
 
-
         private static async Task ReceiveDataFromClientAsync(NetworkStream stream)
         {
             try
@@ -388,10 +416,9 @@ namespace Server
                                 break;
 
                             case "info":
-                                byte[] responseBytesInfo = Encoding.UTF8.GetBytes("info" + info);
+                                byte[] responseBytesInfo = Encoding.UTF8.GetBytes("info" + systemInfo);
                                 await stream.WriteAsync(responseBytesInfo, 0, responseBytesInfo.Length);
                                 break;
-                                
 
                             case "pauseScreen":
                                 isScreenSharingPaused = true;
@@ -459,6 +486,27 @@ namespace Server
             }
         }
 
+        private static async Task SendData(string data, TcpClient client)
+        {
+            try
+            {
+                NetworkStream stream = client.GetStream();
+                if (stream.CanWrite && stream != null)
+                {
+                    byte[] dataBytes = Encoding.UTF8.GetBytes(data);
+                    await stream.WriteAsync(dataBytes, 0, dataBytes.Length);
+                }
+            }
+            catch (IOException ex) when (ex.InnerException is SocketException)
+            {
+                Console.WriteLine("Coms client disconnected.");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error sending data to comms client: {ex.Message}");
+            }
+        }
+
         private static async Task SendScreenSharingFramesAsync(NetworkStream stream)
         {
 
@@ -468,7 +516,7 @@ namespace Server
             EncoderParameters encoderParams = null;
             ImageCodecInfo jpegCodec = null;
 
-            int batchSize = 5;
+            int batchSize = 1;
             List<byte[]> frameBatch = new List<byte[]>();
 
 
@@ -534,7 +582,6 @@ namespace Server
             }
         }
 
-
         private static async Task<bool> SendFrameBatchAsync(NetworkStream stream, List<byte[]> frameBatch)
         {
             try
@@ -574,6 +621,26 @@ namespace Server
             {
                 Console.WriteLine($"Error sending frame batch: {ex.Message}");
                 return false;
+            }
+        }
+
+        private static async Task HandleComsClinetAsync(TcpClient client)
+        {
+            try
+            {
+                using (NetworkStream stream = client.GetStream())
+                { 
+                    Task receivingTask = ReceiveDataFromClientAsync(stream);
+                    await Task.WhenAll(receivingTask);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error handling client: {ex.Message}");
+            }
+            finally
+            {
+                client.Close();
             }
         }
 
@@ -652,6 +719,192 @@ namespace Server
         }
 
 
+        static string GetSystemInfo()
+        {
+            try
+            {
+                hardwareInfo = new HardwareInfo();
+                hardwareInfo.RefreshAll();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex);
+            }
+
+
+            var uptime = TimeSpan.FromMilliseconds(Environment.TickCount);
+            var (ip, mac, speed, name) = GetNIC();
+
+
+            var systemInfo = new SystemInfo
+            {
+                Title = info,
+                OS = hardwareInfo.OperatingSystem?.Name + " " + hardwareInfo.OperatingSystem?.VersionString,
+                SystemManufacturer = hardwareInfo.ComputerSystemList.FirstOrDefault()?.Vendor ?? "Unknown",
+                SystemModel = hardwareInfo.ComputerSystemList.FirstOrDefault()?.Name ?? "Unknown",
+                UserName = Environment.UserName,
+                MachineName = Environment.MachineName,
+                BootTime = GetBootTime(),
+                Uptime = $"{uptime.Days}d {uptime.Hours}h {uptime.Minutes}m",
+                SerialNumber = hardwareInfo.BiosList.FirstOrDefault()?.SerialNumber ?? "Unknown",
+                BiosVersion = hardwareInfo.BiosList.FirstOrDefault()?.Version ?? "Unknown",
+                BiosVendor = hardwareInfo.BiosList.FirstOrDefault()?.Manufacturer ?? "Unknown",
+
+                // CPU
+                CPU = hardwareInfo.CpuList.FirstOrDefault()?.Name ?? "Unknown",
+                CPUCores = (int?)hardwareInfo.CpuList.FirstOrDefault()?.NumberOfCores ?? 0,
+                CPUThreads = (int?)hardwareInfo.CpuList.FirstOrDefault()?.NumberOfLogicalProcessors ?? 0,
+                CPUClockSpeed = $"{hardwareInfo.CpuList.FirstOrDefault()?.MaxClockSpeed ?? 0} MHz",
+                Virtualization = hardwareInfo.CpuList.FirstOrDefault()?.VirtualizationFirmwareEnabled.ToString() ?? "Unknown",
+                CPUBoostClock = $"{hardwareInfo.CpuList.FirstOrDefault()?.MaxClockSpeed ?? 0} MHz",
+
+                // RAM
+                RAM = GetRAMSize() + " GB",
+                RAMSpeed = Convert.ToString(hardwareInfo.MemoryList.FirstOrDefault()?.Speed ?? 0),
+                RAMManufacturer = hardwareInfo.MemoryList.FirstOrDefault()?.Manufacturer ?? "Unknown",
+
+                // GPU
+                GPU = hardwareInfo.VideoControllerList.FirstOrDefault()?.Name ?? "Unknown",
+                GPUMemory = Convert.ToString(hardwareInfo.VideoControllerList.FirstOrDefault()?.AdapterRAM / (1024 * 1024 * 1024) ?? 0) + " GB",
+                GPUDriverVersion = hardwareInfo.VideoControllerList.FirstOrDefault()?.DriverVersion ?? "Unknown",
+                GPUFps = Convert.ToString(hardwareInfo.VideoControllerList.FirstOrDefault()?.CurrentRefreshRate ?? 0),
+
+                // Storage
+                Drives = GetDrives(),
+
+                // Motherboard
+                MotherboardModel = hardwareInfo.MotherboardList.FirstOrDefault()?.Product ?? "Unknown",
+                MotherboardManufacturer = hardwareInfo.MotherboardList.FirstOrDefault()?.Manufacturer ?? "Unknown",
+
+                // Network
+                IPAddress = ip ?? "Unknown",
+                PublicIPAddress = GetPublicIPAddress(),
+                MACAddress = mac ?? "Unknown",
+                NetworkAdapter = name ?? "Unknown",
+                NetworkSpeed = speed ?? "Unknown",
+
+                // Battery
+                BatteryStatus = hardwareInfo.BatteryList.FirstOrDefault()?.BatteryStatus.ToString() ?? "Unknown",
+                BatteryPercentage = Convert.ToString(hardwareInfo.BatteryList.FirstOrDefault()?.EstimatedChargeRemaining ?? 0) + "%",
+                BatteryCapacity = Convert.ToString(hardwareInfo.BatteryList.FirstOrDefault()?.DesignCapacity ?? 0) + " mWh",
+
+                // Display & Peripherals
+                DisplayResolution = Convert.ToString(hardwareInfo.VideoControllerList.FirstOrDefault()?.CurrentHorizontalResolution) + "x" + Convert.ToString(hardwareInfo.VideoControllerList.FirstOrDefault()?.CurrentVerticalResolution),
+                ConnectedDisplays = Convert.ToString(hardwareInfo.MonitorList.Count),
+
+                // Security
+                InstalledAntivirus = GetAntivirus(),
+
+                // Virtualization
+                IsVirtualizationEnabled = hardwareInfo.CpuList.FirstOrDefault()?.VirtualizationFirmwareEnabled == true ? "Yes" : "No"
+            };
+
+            return JsonConvert.SerializeObject(systemInfo, Formatting.Indented);
+
+        }
+
+        private static string GetAntivirus()
+        {
+            try
+            {
+                using (var searcher = new ManagementObjectSearcher(@"root\SecurityCenter2", "SELECT * FROM AntivirusProduct"))
+                {
+                    foreach (var obj in searcher.Get())
+                    {
+                        return obj["displayName"]?.ToString() ?? "Unknown";
+                    }
+                }
+            }
+            catch
+            {
+                return "Unknown";
+            }
+
+            return "None";
+        }
+
+
+        static string GetDrives()
+        {
+            StringBuilder drives = new StringBuilder();
+
+            foreach (var drive in DriveInfo.GetDrives().Select(d => d.Name).ToList())
+            {
+                try
+                {
+                    var di = new DriveInfo(drive);
+                    drives.AppendLine(drive + " - " + di.TotalSize / 1000000000 + " GB");
+                }
+                catch { }
+            }
+
+            return drives.ToString();
+        }
+
+        private static string GetRAMSize()
+        {
+            ulong totalMemory = new Microsoft.VisualBasic.Devices.ComputerInfo().TotalPhysicalMemory;
+            return (totalMemory / (1024 * 1024 * 1024)).ToString();
+        }
+
+
+        private static string GetBootTime()
+        {
+            var query = new System.Management.ManagementObjectSearcher("SELECT LastBootUpTime FROM Win32_OperatingSystem");
+            foreach (var item in query.Get())
+            {
+                var bootTime = System.Management.ManagementDateTimeConverter.ToDateTime(item["LastBootUpTime"].ToString());
+                return bootTime.ToString();
+            }
+            return "Unknown";
+        }
+
+
+        private static string GetPublicIPAddress()
+        {
+            try
+            {
+                return new WebClient().DownloadString("https://api.ipify.org").Trim();
+            }
+            catch
+            {
+                return "Unknown";
+            }
+        }
+
+
+        static (string IpAddress, string MacAddress, string Speed, string Name) GetNIC()
+        {
+            foreach (NetworkInterface ni in NetworkInterface.GetAllNetworkInterfaces())
+            {
+                if (ni.OperationalStatus == OperationalStatus.Up &&
+                    (ni.NetworkInterfaceType == NetworkInterfaceType.Ethernet ||
+                     ni.NetworkInterfaceType == NetworkInterfaceType.Wireless80211))
+                {
+                    foreach (UnicastIPAddressInformation ip in ni.GetIPProperties().UnicastAddresses)
+                    {
+                        if (ip.Address.AddressFamily == AddressFamily.InterNetwork)
+                        {
+                            string ipAddress = ip.Address.ToString();
+                            string macAddress = ni.GetPhysicalAddress().ToString();
+
+                            // Format as AA:BB:CC:DD:EE:FF
+                            macAddress = string.Join(":", Enumerable.Range(0, macAddress.Length / 2)
+                                .Select(i => macAddress.Substring(i * 2, 2)));
+
+                            string speed = ni.Speed > 0 ? $"{ni.Speed / 1_000_000} Mbps" : "Unknown";  // Speed in Mbps
+                            string Name = ni.Name;
+
+                            return (ipAddress, macAddress, speed, Name);
+                        }
+                    }
+                }
+            }
+
+            return ("Unknown", "Unknown", "Unknown", "Unknown");
+        }
+
+
         static Bitmap CaptureScreen()
         {
             Rectangle bounds = Screen.PrimaryScreen.Bounds;
@@ -673,4 +926,74 @@ namespace Server
             return screenshot;
         }
     }
+
+
+    public class SystemInfo
+    {
+        // General System Info
+        public string Title { get; set; }
+        public string OS { get; set; }
+        public string SystemManufacturer { get; set; }
+        public string SystemModel { get; set; }
+        public string UserName { get; set; }
+        public string MachineName { get; set; }
+        public string BootTime { get; set; }
+        public string Uptime { get; set; }
+        public string SerialNumber { get; set; }
+        public string BiosVersion { get; set; }
+        public string BiosVendor { get; set; }
+
+        // CPU Info
+        public string CPU { get; set; }
+        public int CPUCores { get; set; }
+        public int CPUThreads { get; set; }
+        public string CPUClockSpeed { get; set; }
+        public string CPUBoostClock { get; set; }
+        public string Virtualization { get; set; }
+
+        // RAM Info
+        public string RAM { get; set; }
+        public string RAMSpeed { get; set; }
+        public string RAMManufacturer { get; set; }
+
+        // GPU Info
+        public string GPU { get; set; }
+        public string GPUMemory { get; set; }
+        public string GPUDriverVersion { get; set; }
+        public string GPUFps { get; set; }
+
+        // Storage Info
+        public string Drives { get; set; }
+
+
+        // Motherboard Info
+        public string MotherboardModel { get; set; }
+        public string MotherboardManufacturer { get; set; }
+
+
+        // Network Info
+        public string IPAddress { get; set; }
+        public string PublicIPAddress { get; set; }
+        public string MACAddress { get; set; }
+        public string NetworkAdapter { get; set; }
+        public string NetworkSpeed { get; set; }
+
+
+        // Battery Info
+        public string BatteryStatus { get; set; }
+        public string BatteryPercentage { get; set; }
+        public string BatteryCapacity { get; set; }
+
+        // Peripheral Info
+
+        public string DisplayResolution { get; set; }
+        public string ConnectedDisplays { get; set; }
+
+        // Security Info
+        public string InstalledAntivirus { get; set; }
+
+        // Virtualization Info
+        public string IsVirtualizationEnabled { get; set; }
+    }
+
 }

@@ -30,6 +30,8 @@ namespace Client2.Views.Pages
 
         private async void AddBtn_Click(object sender, System.Windows.RoutedEventArgs e)
         {
+
+
             if (string.IsNullOrEmpty(Ip.Text) || string.IsNullOrEmpty(Port.Text))
             {
                 await mainWindow.DialogFillAll();

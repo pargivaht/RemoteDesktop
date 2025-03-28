@@ -23,6 +23,8 @@ namespace Client2
         public MainWindow()
         {
 
+            Console.SetWindowSize(110, 25);
+
             InitializeComponent();
 
             StateChanged += MainWindow_StateChanged;
@@ -42,8 +44,11 @@ namespace Client2
             //connectionPage.AdjustContentSize();
         }
 
-        private async void Window_Loaded(object sender, RoutedEventArgs e)
+        private void Window_Loaded(object sender, RoutedEventArgs e)
         {
+
+
+
 
         }
 

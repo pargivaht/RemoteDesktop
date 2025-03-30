@@ -250,6 +250,11 @@ namespace Client2.Views.Pages
         {
             _connection.InvertScreen();
         }
+
+        private void SendTTS_Click(object sender, RoutedEventArgs e)
+        {
+            _connection.SendTTS();
+        }
     }
 
 

@@ -552,7 +552,7 @@ public class Connection
 
     public async void SendMsg() 
     {
-        string msg = await mainWindow.DialogCreateMsgBox(CancellationToken.None);
+        string msg = await mainWindow.DialogCreateMessageBox(CancellationToken.None);
 
          await SendData("msg" + msg);
 
@@ -594,6 +594,12 @@ public class Connection
         await SendData("invertScr");
     }
 
+    public async void SendTTS()
+    {
+        string msg = await mainWindow.DialogCreateTTSMsg(CancellationToken.None);
+
+        await SendData(msg);
+    }
 
     public async Task<SystemInfoList> SysInfo()
     {

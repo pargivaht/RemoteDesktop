@@ -42,6 +42,7 @@
                     <ui:MenuItem Icon="{ui:SymbolIcon Cd16}" Header="Open Cd Tray" Click="OpenTray_Click"/>
                     <ui:MenuItem Icon="{ui:SymbolIcon EmojiSad24}" Header="BSOD" Click="BSOD_Click"/>
                     <ui:MenuItem Icon="{ui:SymbolIcon CommentArrowLeft24}" Header="Message Box" Click="SendMsg_Click"/>
+                    <ui:MenuItem Icon="{ui:SymbolIcon Speaker224}" Header="TTS Message" Click="SendTTS_Click"/>
 
                     <ui:MenuItem Header="Gdi" Icon="{ui:SymbolIcon ColorLine24}">
                         <ui:MenuItem Icon="{ui:SymbolIcon ArrowBidirectionalUpDown24}" Header="Flip Screen" Click="flipScr_Click"/>

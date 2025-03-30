@@ -1,10 +1,15 @@
 ﻿
 using Client2.ViewModel;
 using Client2.Views.Pages;
+using NAudio.Wave;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
+using System.IO;
+using System.Net.Http;
 using System.Security.Policy;
+using System.Speech.Synthesis;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -132,7 +137,7 @@ namespace Client2
         }
 
 
-        public async Task<string> DialogCreateMsgBox(CancellationToken c)
+        public async Task<string> DialogCreateMessageBox(CancellationToken c)
         {
             var contentDialogService = new ContentDialogService();
             contentDialogService.SetDialogHost(RootContentDialogPresenter);
@@ -182,6 +187,87 @@ namespace Client2
             }
 
             return null; // User canceled the dialog
+        }
+
+        public async Task<string> DialogCreateTTSMsg(CancellationToken c)
+        {
+            var contentDialogService = new ContentDialogService();
+            contentDialogService.SetDialogHost(RootContentDialogPresenter);
+
+            // Create UI elements
+            Wpf.Ui.Controls.TextBox messageBox = new Wpf.Ui.Controls.TextBox() { PlaceholderText = "Enter message (required)" };
+
+            ComboBox speakerDropdown = new ComboBox()
+            {
+                ItemsSource = new List<string> { "albert", "indrek", "kalev", "kylli", "kylli", "lee", "liivika", "luukas", "mari", "meelis", "peeter", "tambet", "vesta" },
+                SelectedIndex = 0 // Default selection
+            };
+
+            ComboBox langDropdown = new ComboBox()
+            {
+                ItemsSource = new List<string> { "est", "eng" },
+                SelectedIndex = 0
+            };
+
+            Slider speedSlider = new Slider()
+            {
+                Minimum = 0.5,
+                Maximum = 2,
+                Value = 1,
+                TickFrequency = 0.1,
+                IsSnapToTickEnabled = true
+            };
+
+            StackPanel panel = new StackPanel();
+
+            panel.Children.Add(new Wpf.Ui.Controls.TextBlock() { Text = "Speaker:" });
+            panel.Children.Add(speakerDropdown);
+            panel.Children.Add(new Wpf.Ui.Controls.TextBlock() { Text = "Language:" });
+            panel.Children.Add(langDropdown);
+            panel.Children.Add(new Wpf.Ui.Controls.TextBlock() { Text = "Speed:" });
+            panel.Children.Add(speedSlider);
+            panel.Children.Add(new Wpf.Ui.Controls.TextBlock() { Text = "Message:" });
+            panel.Children.Add(messageBox);
+
+
+            var dialog = new ContentDialog()
+            {
+                Title = "Send TTS Message",
+                Content = panel,
+                PrimaryButtonText = "Send",
+                SecondaryButtonText = "Preview",
+                CloseButtonText = "Cancel"
+            };
+
+            // Show the dialog
+            var result = await contentDialogService.ShowAsync(dialog, c);
+
+            // Return formatted string if user clicked "Send"
+            if (result == ContentDialogResult.Primary)
+            {
+                if (langDropdown.SelectedItem == "est")
+                {
+                    return $"tts{messageBox.Text}|{speakerDropdown.Text}|{speedSlider.Value}";
+                }
+                else
+                {
+                    return $"engtts{messageBox.Text}|{speedSlider.Value}";
+                }
+            }
+            else if (result == ContentDialogResult.Secondary)
+            {
+                if (langDropdown.SelectedIndex == 0)
+                {
+                    await PlayTTS(messageBox.Text, speakerDropdown.Text, (int)speedSlider.Value);
+                }
+                else
+                {
+                    PlayTTSeng(messageBox.Text, (int)speedSlider.Value);
+                }
+            }
+
+            return null; // User canceled the dialog
+            
         }
 
 
@@ -311,5 +397,64 @@ namespace Client2
 
         }
 
+        public static async Task PlayTTS(string text, string speaker, float speed = 1)
+        {
+            if (speed > 2)
+            {
+                speed = 2;
+            }
+            else if (speed < 0.5)
+            {
+                speed = 0.5f;
+            }
+            HttpClient client = new HttpClient();
+
+            var payload = new
+            {
+                text,
+                speaker = speaker.ToString().ToLowerInvariant(),
+                speed
+            };
+
+            var content = new StringContent(Newtonsoft.Json.JsonConvert.SerializeObject(payload), Encoding.UTF8, "application/json");
+
+            try
+            {
+                // Send POST request to TTS API
+                HttpResponseMessage response = await client.PostAsync("https://api.tartunlp.ai/text-to-speech/v2/", content);
+                response.EnsureSuccessStatusCode();
+
+                // Read the response stream
+                using (Stream audioStream = await response.Content.ReadAsStreamAsync())
+                {
+                    // Play the audio stream using NAudio
+                    using (var waveOut = new WaveOutEvent())
+                    using (var waveReader = new WaveFileReader(audioStream))
+                    {
+                        waveOut.Init(waveReader);
+                        waveOut.Play();
+
+                        // Wait for playback to finish
+                        while (waveOut.PlaybackState == PlaybackState.Playing)
+                        {
+                            await Task.Delay(500);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"An error occurred: {ex.Message}");
+            }
+        }
+
+        public static void PlayTTSeng(string text, int speed = 1)
+        {
+            using (SpeechSynthesizer synth = new SpeechSynthesizer())
+            {
+                synth.Rate = speed;
+                synth.SpeakAsync(text);
+            }
+        }
     }
 }

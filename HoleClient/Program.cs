@@ -78,109 +78,88 @@
 
 
 
-
 using System;
 using System.IO;
-using System.Net.Sockets;
-using System.Security.Cryptography;
+using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
+using NAudio.Wave;
 
-class SecureClient
+class Program
 {
-    static async Task Main()
+    static async Task Main(string[] args)
     {
-        // Connect to the server
-        using (TcpClient client = new TcpClient("127.0.0.1", 8888))
-        using (var stream = client.GetStream())
-        using (var reader = new StreamReader(stream, Encoding.UTF8))
-        using (var writer = new StreamWriter(stream) { AutoFlush = true })
-        {
-            // Request the RSA public key from the server
-            string rsaPublicKey = await reader.ReadLineAsync();
-            Console.WriteLine("Received RSA Public Key.");
-
-            // Generate AES key
-            byte[] aesKey = new byte[32]; // 256-bit AES key
-            new Random().NextBytes(aesKey);
-
-            // Encrypt AES key with server's RSA public key
-            byte[] encryptedAesKey = RSAEncryption.EncryptWithRSA(Convert.ToBase64String(aesKey), rsaPublicKey);
-
-            // Send the encrypted AES key to the server
-            await writer.WriteLineAsync(Convert.ToBase64String(encryptedAesKey));
-            Console.WriteLine("Sent AES key securely.");
-
-            // Encrypt a message with AES
-            byte[] aesIV = new byte[16]; // IV should be random in real cases
-            string message = "Hello, secure server!";
-            byte[] encryptedMessage = AESEncryption.Encrypt(message, aesKey, aesIV);
-
-            // Send the encrypted message to the server
-            await writer.WriteLineAsync(Convert.ToBase64String(encryptedMessage));
-            Console.WriteLine("Sent encrypted message.");
-        }
+        await PlayTTS("Kell oli juba hiline, kui Kärt jõudis koju. ", Speakers.meelis);
     }
-}
-
-class RSAEncryption
-{
-    public static byte[] EncryptWithRSA(string plainText, string publicKey)
+public static async Task PlayTTS(string text, Speakers speaker, float speed = 1)
     {
-        using (var rsa = RSA.Create())
+        if (speed > 2)
         {
-            rsa.ImportRSAPublicKey(Convert.FromBase64String(publicKey), out _);
-            return rsa.Encrypt(Encoding.UTF8.GetBytes(plainText), RSAEncryptionPadding.OaepSHA256);
+            speed = 2;
         }
-    }
-
-    public static string DecryptWithRSA(byte[] cipherText, string privateKey)
-    {
-        using (var rsa = RSA.Create())
+        else if(speed<0.5)
         {
-            rsa.ImportRSAPrivateKey(Convert.FromBase64String(privateKey), out _);
-            return Encoding.UTF8.GetString(rsa.Decrypt(cipherText, RSAEncryptionPadding.OaepSHA256));
+            speed = 0.5f;
         }
-    }
-}
+        HttpClient client = new HttpClient();
 
-class AESEncryption
-{
-    public static byte[] Encrypt(string plainText, byte[] key, byte[] iv)
-    {
-        using (var aes = Aes.Create())
+        var payload = new
         {
-            aes.Key = key;
-            aes.IV = iv;
+            text,
+            speaker = speaker.ToString().ToLowerInvariant(),
+            speed
+        };
 
-            using (var encryptor = aes.CreateEncryptor())
-            using (var ms = new MemoryStream())
-            using (var cs = new CryptoStream(ms, encryptor, CryptoStreamMode.Write))
-            using (var writer = new StreamWriter(cs))
+        var content = new StringContent(Newtonsoft.Json.JsonConvert.SerializeObject(payload), Encoding.UTF8, "application/json");
+
+        try
+        {
+            // Send POST request to TTS API
+            HttpResponseMessage response = await client.PostAsync("https://api.tartunlp.ai/text-to-speech/v2/", content);
+            response.EnsureSuccessStatusCode();
+
+            // Read the response stream
+            using (Stream audioStream = await response.Content.ReadAsStreamAsync())
             {
-                writer.Write(plainText);
-                writer.Flush();
-                cs.FlushFinalBlock();
-                return ms.ToArray();
+                // Play the audio stream using NAudio
+                using (var waveOut = new WaveOutEvent())
+                using (var waveReader = new WaveFileReader(audioStream))
+                {
+                    waveOut.Init(waveReader);
+                    waveOut.Play();
+
+                    // Wait for playback to finish
+                    while (waveOut.PlaybackState == PlaybackState.Playing)
+                    {
+                        await Task.Delay(500);
+                    }
+                }
             }
         }
-    }
-
-    public static string Decrypt(byte[] cipherText, byte[] key, byte[] iv)
-    {
-        using (var aes = Aes.Create())
+        catch (Exception ex)
         {
-            aes.Key = key;
-            aes.IV = iv;
-
-            using (var decryptor = aes.CreateDecryptor())
-            using (var ms = new MemoryStream(cipherText))
-            using (var cs = new CryptoStream(ms, decryptor, CryptoStreamMode.Read))
-            using (var reader = new StreamReader(cs))
-            {
-                return reader.ReadToEnd();
-            }
+            Console.WriteLine($"An error occurred: {ex.Message}");
         }
     }
+    
 }
+
+enum Speakers
+{
+    albert,
+    indrek,
+    kalev,
+    kylli,
+    lee,
+    liivika,
+    luukas,
+    mari,
+    meelis,
+    peeter,
+    tambet,
+    vesta
+}
+
+
+
 

@@ -17,7 +17,10 @@ using System.Net.NetworkInformation;
 using System.Management;
 using Newtonsoft.Json;
 using Hardware.Info;
-using System.Windows.Media.TextFormatting;
+using System.Speech.Synthesis;
+using System.Net.Http;
+using Microsoft.VisualBasic.FileIO;
+using System.Web;
 
 namespace Server
 {
@@ -413,9 +416,8 @@ namespace Server
 
                         if (receivedData.StartsWith("msg"))
                         {
-                            string msgString = receivedData.Substring(3);
+                            string[] parts = receivedData.Substring(3).Split('|');
 
-                            string[] parts = msgString.Split('|');
                             if (parts.Length < 2)
                             {
                                 Console.WriteLine("Invalid format for messagebox. Use: text|title|buttons|icon");
@@ -443,6 +445,42 @@ namespace Server
                         {
                             string url = receivedData.Substring(7);
                             Process.Start(url);
+                        }
+
+
+                        if (receivedData.StartsWith("engtts"))
+                        {
+                            string[] parts = receivedData.Substring(6).Split('|');
+
+                            if (parts.Length < 2)
+                            {
+                                Console.WriteLine("Invalid format for TTS. Use: text|speed");
+                                Console.WriteLine(receivedData);
+                                return;
+                            }
+
+                            string text = parts[0];
+                            int speed = Convert.ToInt32(parts[1]);
+
+                            PlayTTSeng(text, speed);
+                        }
+
+                        if (receivedData.StartsWith("tts"))
+                        {
+                            string[] parts = receivedData.Substring(3).Split('|');
+
+                            if (parts.Length < 3)
+                            {
+                                Console.WriteLine("Invalid format for TTS. Use: text|speaker|speed");
+                                Console.WriteLine(receivedData);
+                                return;
+                            }
+
+                            string text = parts[0];
+                            string speaker = parts[1];
+                            float speed = float.Parse(parts[2], System.Globalization.CultureInfo.InvariantCulture);
+
+                            await PlayTTS(text, (Speakers)Enum.Parse(typeof(Speakers), speaker), speed);  
                         }
 
 
@@ -726,6 +764,66 @@ namespace Server
             return ImageCodecInfo.GetImageDecoders().FirstOrDefault(codec => codec.FormatID == format.Guid);
         }
 
+        public static async Task PlayTTS(string text, Speakers speaker, float speed = 1)
+        {
+            if (speed > 2)
+            {
+                speed = 2;
+            }
+            else if (speed < 0.5)
+            {
+                speed = 0.5f;
+            }
+            HttpClient client = new HttpClient();
+
+            var payload = new
+            {
+                text,
+                speaker = speaker.ToString().ToLowerInvariant(),
+                speed
+            };
+
+            var content = new StringContent(Newtonsoft.Json.JsonConvert.SerializeObject(payload), Encoding.UTF8, "application/json");
+
+            try
+            {
+                // Send POST request to TTS API
+                HttpResponseMessage response = await client.PostAsync("https://api.tartunlp.ai/text-to-speech/v2/", content);
+                response.EnsureSuccessStatusCode();
+
+                // Read the response stream
+                using (Stream audioStream = await response.Content.ReadAsStreamAsync())
+                {
+                    // Play the audio stream using NAudio
+                    using (var waveOut = new WaveOutEvent())
+                    using (var waveReader = new WaveFileReader(audioStream))
+                    {
+                        waveOut.Init(waveReader);
+                        waveOut.Play();
+
+                        // Wait for playback to finish
+                        while (waveOut.PlaybackState == PlaybackState.Playing)
+                        {
+                            await Task.Delay(500);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"An error occurred: {ex.Message}");
+            }
+        }
+
+        public static void PlayTTSeng(string text, int speed = 1)
+        {
+            using (SpeechSynthesizer synth = new SpeechSynthesizer())
+            {
+                synth.Rate = speed;
+                synth.Speak(text);
+            }
+        }
+
 
         static void Shutdown()
         {
@@ -979,6 +1077,22 @@ namespace Server
             }
             return screenshot;
         }
+    }
+
+    enum Speakers
+    {
+        albert,
+        indrek,
+        kalev,
+        kylli,
+        lee,
+        liivika,
+        luukas,
+        mari,
+        meelis,
+        peeter,
+        tambet,
+        vesta
     }
 
 

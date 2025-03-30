@@ -193,10 +193,10 @@ public class Connection
     public static async Task SendData(string stringData)
     {
         byte[] data = Encoding.UTF8.GetBytes(stringData);
-        await Task.Run(() => SendDataByte(data));
+        await SendDataByte(data);
     }
 
-    public static async void SendDataByte(byte[] data)
+    public static async Task SendDataByte(byte[] data)
     {
         try
         {
@@ -226,12 +226,16 @@ public class Connection
     {
         await SendData("resumeScreen");
 
+        //TODO: Add default settings into prefrences
+        ChangeResolution("1920|1080");
+        Compression(100);
+        ChangeFps(60);
+
         while (!cancellationToken.IsCancellationRequested)
         {
             try
             {
 
-                // Check if the stream is still readable
                 if (!stream.CanRead)
                 {
                     Console.WriteLine("Stream is no longer readable.");
@@ -248,12 +252,10 @@ public class Connection
                 // Process each frame in the batch
                 for (int i = 0; i < frameCount; i++)
                 {
-                    // Read the frame size
                     byte[] sizeBytes = new byte[sizeof(int)];
                     await stream.ReadAsync(sizeBytes, 0, sizeBytes.Length, cancellationToken);
                     int imageSize = BitConverter.ToInt32(sizeBytes, 0);
 
-                    // Read the frame data
                     byte[] imageData = new byte[imageSize];
                     int totalBytesRead = 0;
                     while (totalBytesRead < imageSize)
@@ -266,20 +268,18 @@ public class Connection
                         totalBytesRead += bytesRead;
                     }
 
-                    // Create image from received data
                     using (MemoryStream ms = new MemoryStream(imageData))
                     {
-                        ms.Position = 0; // Set stream position to beginning
+                        ms.Position = 0;
                         Image screenshot = Image.FromStream(ms);
                         ScreenUpdated.Invoke(screenshot); // Update the screen image (invoke on UI thread)
                     }
                 }
 
-                await Task.Delay(1000 / fps, cancellationToken); // Adjust the interval as needed
+                await Task.Delay(1000 / fps, cancellationToken);
             }
             catch (OperationCanceledException)
             {
-                // Ignore cancellation and exit the loop
                 break;
             }
             catch (Exception ex)
@@ -289,7 +289,6 @@ public class Connection
             }
         }
 
-        // Clean up resources
         stream.Close();
         client.Close();
     }
@@ -327,7 +326,6 @@ public class Connection
             }
             catch (OperationCanceledException)
             {
-                // Ignore cancellation and exit the loop
                 break;
             }
             catch (Exception ex)
@@ -366,7 +364,7 @@ public class Connection
                             {
                                 await Application.Current.Dispatcher.BeginInvoke(() =>
                                 {
-                                    mainWindow.SetTitle(systemInfo.Title); // UI update happens immediately
+                                    mainWindow.SetTitle(systemInfo.Title);
                                 });
                             }
                             else
@@ -379,11 +377,7 @@ public class Connection
                             Console.WriteLine("Error deserializing system info: " + ex.Message);
                         }
                     }
-
-
                 }
-
-
             }
         }
         catch (IOException ex) when (ex.InnerException is SocketException)
@@ -409,70 +403,75 @@ public class Connection
         }
     }
 
-    public void ChangeFps(int _fps)
+    public static async void ChangeFps(int _fps)
     {
         if (_fps == 0)
         {
             fps = 1;
-            SendData("fps1");
+            await SendData("fps1");
         }
         else
         {
             fps = _fps;
-            SendData("fps" + _fps.ToString());
+            await SendData("fps" + _fps.ToString());
             Thread.Sleep(100);
         }
     }
 
-    public void Compression(int _compression)
+    public static async void Compression(int _compression)
     {
         if (_compression == 0)
         {
             compression = 1;
-            SendData("compression1");
+            await SendData("compression1");
         }
         else
         {
             compression = _compression;
-            SendData("compression1" + _compression.ToString());
+            await SendData("compression1" + _compression.ToString());
             Thread.Sleep(100);
         }
     }
 
-    public void ChangeCamera()
+    public static async void ChangeResolution(string resolution)
+    {
+        await SendData("resolution" + resolution);
+    }
+
+    public async void ChangeCamera()
     {
         CurremtCameraIndex++;
         if (CurremtCameraIndex > 2)
         {
             CurremtCameraIndex = 1;
         }
-        SendData("cam" + CurremtCameraIndex.ToString());
+        await SendData("cam" + CurremtCameraIndex.ToString());
     }
 
-    public void PauseCameraSwitch()
+    public async void PauseCameraSwitch()
     {
         if (PauseCamSwitch)
         {
-            SendData("resumeCam");
+            await SendData("resumeCam");
             PauseCamSwitch = false;
         }
         else
         {
-            SendData("pauseCam");
+            await SendData("pauseCam");
             PauseCamSwitch = true;
         }
     }
 
-    public void PauseScreenSwitch()
+    public async void PauseScreenSwitch()
     {
         if (PauseImageSwitch)
         {
-            SendData("resumeScreen");
+            await SendData("resumeScreen");
             PauseImageSwitch = false;
         }
         else
         {
-            SendData("pauseScreen");
+            await SendData("pauseScreen");
             PauseImageSwitch = true;
         }
     }
@@ -526,13 +525,18 @@ public class Connection
 
         Task.Run(() => PlaySytemAudio(false));
         SpeakerImageSwitch = false;
+        
     }
 
     public async void OpenWeb()
     {
         string url = await mainWindow.DialogCreateUrl(CancellationToken.None);
 
-        await SendData("openweb" + url);
+        if (url != null)
+        {
+            await SendData("openweb" + url);
+
+        }
 
     }
 
@@ -554,7 +558,10 @@ public class Connection
     {
         string msg = await mainWindow.DialogCreateMessageBox(CancellationToken.None);
 
-         await SendData("msg" + msg);
+        if (msg != null)
+        {
+            await SendData("msg" + msg);
+        }
 
     }
 
@@ -598,7 +605,11 @@ public class Connection
     {
         string msg = await mainWindow.DialogCreateTTSMsg(CancellationToken.None);
 
-        await SendData(msg);
+        if (msg != null)
+        {
+            await SendData(msg);
+        }
+        
     }
 
     public async Task<SystemInfoList> SysInfo()

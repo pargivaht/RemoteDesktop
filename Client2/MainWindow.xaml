@@ -56,7 +56,7 @@
 
                     <ui:NavigationViewItemSeparator />
 
-                    <ui:NavigationViewItem Content="user@pc - 192.168.2.93" TargetPageType="{x:Type pages:ConnectionPage}">
+                    <ui:NavigationViewItem Content="user@pc" TargetPageType="{x:Type pages:ConnectionPage}">
                         <ui:NavigationViewItem.Icon>
                             <ui:SymbolIcon Symbol="Desktop16" Filled="False"/>
                         </ui:NavigationViewItem.Icon>

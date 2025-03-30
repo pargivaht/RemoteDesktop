@@ -180,6 +180,7 @@ namespace Client2
             // Show the dialog
             var result = await contentDialogService.ShowAsync(dialog, c);
 
+
             // Return formatted string if user clicked "Send"
             if (result == ContentDialogResult.Primary)
             {

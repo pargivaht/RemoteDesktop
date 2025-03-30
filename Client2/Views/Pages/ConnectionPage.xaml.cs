@@ -23,28 +23,33 @@ namespace Client2.Views.Pages
         [DllImport("gdi32.dll")]
         private static extern bool DeleteObject(IntPtr hObject);
 
-        public readonly Connection _connection;
+        public Connection _connection;
 
         private const double HeaderHeight = 55;
         private const double FooterHeight = 40;
+
+        MainWindow window;
 
         public ConnectionPage()
         {
             InitializeComponent();
             Loaded += ConnectionPage_Loaded;
             SizeChanged += ConnectionPage_SizeChanged;
+            resolutionBox.SelectedIndex = 0;
+            resolutionBox.SelectionChanged += resolutionBox_SelectionChanged;
             
 
             string ip = NavigationParameters.Ip;
             int port = NavigationParameters.Port;
             string password = NavigationParameters.Password;
 
-            MainWindow window = NavigationParameters.Window;
+            window = NavigationParameters.Window;
 
             _connection = new Connection(ip, port, password, this, window);
 
             Connection.ScreenUpdated += OnScreenUpdated;
             Connection.CameraUpdated += OnCameraUpdated;
+
         }
 
         private void OnScreenUpdated(Image image)
@@ -174,15 +179,17 @@ namespace Client2.Views.Pages
         private void DisconnectBtn_Click(object sender, RoutedEventArgs e)
         {
 
-            NavigationService?.Navigate(new MainPage());
+            //NavigationService?.Navigate(new MainPage());
+            window.RootNavigation.Navigate(typeof(MainPage));
             _connection.Disconnect();
+            _connection = null;
         }
 
         private void fps_slider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
             if (_connection != null)
             {
-                _connection.ChangeFps((int)fps_slider.Value);
+                Connection.ChangeFps((int)fps_slider.Value);
             }
         }
 
@@ -190,7 +197,7 @@ namespace Client2.Views.Pages
         {
             if (_connection != null)
             {
-                _connection.Compression((int)compression_slider.Value);
+                Connection.Compression((int)compression_slider.Value);
             }
         }
 
@@ -254,6 +261,16 @@ namespace Client2.Views.Pages
         private void SendTTS_Click(object sender, RoutedEventArgs e)
         {
             _connection.SendTTS();
+        }
+
+        private void resolutionBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (resolutionBox.SelectedItem is ComboBoxItem item)
+            {
+                string resolution = item.Content.ToString().Replace("x", "|");
+
+                Connection.ChangeResolution(resolution);
+            }
         }
     }
 

@@ -17,7 +17,7 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="60"/>
             <RowDefinition Height="90*" />
-            <RowDefinition Height="3*" />
+            <RowDefinition Height="2*" />
         </Grid.RowDefinitions>
 
         <Menu Margin="15,0,0,0">
@@ -80,6 +80,13 @@
                 <ui:TextBlock Text="Quality" FontSize="14"  Grid.Column="0" Margin="0,1"/>
             </Grid>
 
+            <ComboBox x:Name="resolutionBox" Margin="0,-2,0,-2" FontSize="4">
+                <ComboBoxItem Content="1920x1080"/>
+                <ComboBoxItem Content="1280x720"/>
+                <ComboBoxItem Content="854x480"/>
+                <ComboBoxItem Content="640x360"/>
+            </ComboBox>
+
 
 
         </Menu>
@@ -89,14 +96,14 @@
                 <RowDefinition Height="*"/>
             </Grid.RowDefinitions>
 
-            <TabControl Margin="15,14,0,0">
+            <TabControl Margin="15,7,0,-7">
                 <TabItem Header="Screen 1"/>
                 <TabItem Header="Screen 2"/>
                 <TabItem Header="Files"/>
                 <TabItem Header="Camera"/>
             </TabControl>
 
-            <ui:Image Grid.Row="1" Stretch="Uniform" VerticalAlignment="Top" HorizontalAlignment="Left" Margin="4,0,4,4" CornerRadius="10" x:Name="pictureBoxScreen"/>
+            <ui:Image Grid.Row="1" Stretch="Uniform" VerticalAlignment="Top" HorizontalAlignment="Left" Margin="4,-7,4,-15" CornerRadius="10" x:Name="pictureBoxScreen"/>
         </Grid>
 
         <Grid Grid.Row="2" Margin="24,0,0,0">
@@ -117,9 +124,9 @@
             </Grid.ColumnDefinitions>
 
 
-            <ui:TextBlock Text="ping: 35ms" HorizontalAlignment="Center" VerticalAlignment="Bottom" FontSize="14" Margin="4" Foreground="Gray" Grid.Column="0"/>
+            <ui:TextBlock Text="ping: 35ms" HorizontalAlignment="Center" VerticalAlignment="Bottom" FontSize="13" Margin="4,0,0,1" Foreground="Gray" Grid.Column="0"/>
 
-            <ui:TextBlock Text="ip: 192.168.2.93" HorizontalAlignment="Center" VerticalAlignment="Bottom" FontSize="14" Margin="4" Foreground="Gray" Grid.Column="1"/>
+            <ui:TextBlock Text="ip: 192.168.2.93" HorizontalAlignment="Center" VerticalAlignment="Bottom" FontSize="13" Margin="4,0,0,1" Foreground="Gray" Grid.Column="1"/>
 
         </Grid>
     </Grid>

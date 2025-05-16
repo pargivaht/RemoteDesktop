@@ -13,6 +13,8 @@ using System.Windows;
 using Client2.Views.Pages;
 using Newtonsoft.Json;
 using System.Windows.Media.Imaging;
+using System.Diagnostics;
+using System.Net.NetworkInformation;
 
 public class Connection
 {
@@ -28,6 +30,7 @@ public class Connection
 
     public static event Action<Image> ScreenUpdated;
     public static event Action<Image> CameraUpdated;
+    public static event Action<long> PingUpdated;
 
 
     static TcpClient cameraClient;
@@ -56,6 +59,8 @@ public class Connection
     private static int compression = 100;
 
     public static SystemInfoList systemInfo;
+
+    public static long ping;
 
 
     public Connection(string ip, int port, string password, Page page, MainWindow window)
@@ -94,7 +99,8 @@ public class Connection
                     }
                 }),
                 //Task.Run(() => ReceiveCameraStream(cancellationTokenSource.Token)),
-                Task.Run(() => ReceiveCommands(cancellationTokenSource.Token))
+                Task.Run(() => ReceiveCommands(cancellationTokenSource.Token)),
+                Task.Run(Ping)
             );
         }
         catch (Exception ex)
@@ -102,6 +108,28 @@ public class Connection
             await mainWindow.DialogError("Error connecting to server: ", ex.Message, CancellationToken.None);
             mainWindow.RootNavigation.Navigate(typeof(MainPage));
         }
+    }
+
+    public static async Task Ping()
+    {
+        using Ping ping = new Ping();
+
+        while (true)
+        {
+            PingReply reply = ping.Send(Ip);
+
+            if (reply.Status == IPStatus.Success)
+            {
+                PingUpdated.Invoke(reply.RoundtripTime);
+            }
+            else
+            {
+                PingUpdated.Invoke(31337);
+            }
+
+            await Task.Delay(1000);
+        }
+
     }
 
 
@@ -610,6 +638,15 @@ public class Connection
             await SendData(msg);
         }
         
+    }
+
+    public async Task RestartServer()
+    {
+        await SendData("restartServer");
+
+        await Task.Delay(3000);
+
+        Reconnect();
     }
 
     public async Task<SystemInfoList> SysInfo()

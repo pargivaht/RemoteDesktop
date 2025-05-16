@@ -78,88 +78,158 @@
 
 
 
+//using System;
+//using System.IO;
+//using System.Net.Http;
+//using System.Text;
+//using System.Threading.Tasks;
+//using NAudio.Wave;
+
+//class Program
+//{
+//    static async Task Main(string[] args)
+//    {
+//        await PlayTTS("Kell oli juba hiline, kui Kärt jõudis koju. ", Speakers.meelis);
+//    }
+//public static async Task PlayTTS(string text, Speakers speaker, float speed = 1)
+//    {
+//        if (speed > 2)
+//        {
+//            speed = 2;
+//        }
+//        else if(speed<0.5)
+//        {
+//            speed = 0.5f;
+//        }
+//        HttpClient client = new HttpClient();
+
+//        var payload = new
+//        {
+//            text,
+//            speaker = speaker.ToString().ToLowerInvariant(),
+//            speed
+//        };
+
+//        var content = new StringContent(Newtonsoft.Json.JsonConvert.SerializeObject(payload), Encoding.UTF8, "application/json");
+
+//        try
+//        {
+//            // Send POST request to TTS API
+//            HttpResponseMessage response = await client.PostAsync("https://api.tartunlp.ai/text-to-speech/v2/", content);
+//            response.EnsureSuccessStatusCode();
+
+//            // Read the response stream
+//            using (Stream audioStream = await response.Content.ReadAsStreamAsync())
+//            {
+//                // Play the audio stream using NAudio
+//                using (var waveOut = new WaveOutEvent())
+//                using (var waveReader = new WaveFileReader(audioStream))
+//                {
+//                    waveOut.Init(waveReader);
+//                    waveOut.Play();
+
+//                    // Wait for playback to finish
+//                    while (waveOut.PlaybackState == PlaybackState.Playing)
+//                    {
+//                        await Task.Delay(500);
+//                    }
+//                }
+//            }
+//        }
+//        catch (Exception ex)
+//        {
+//            Console.WriteLine($"An error occurred: {ex.Message}");
+//        }
+//    }
+
+//}
+
+//enum Speakers
+//{
+//    albert,
+//    indrek,
+//    kalev,
+//    kylli,
+//    lee,
+//    liivika,
+//    luukas,
+//    mari,
+//    meelis,
+//    peeter,
+//    tambet,
+//    vesta
+//}
+
+
+
+
 using System;
+using System.Drawing;
+using System.Drawing.Imaging;
 using System.IO;
-using System.Net.Http;
-using System.Text;
-using System.Threading.Tasks;
-using NAudio.Wave;
+using System.Runtime.InteropServices;
+using System.Windows.Forms;
 
 class Program
 {
-    static async Task Main(string[] args)
+    [STAThread]
+    static void Main()
     {
-        await PlayTTS("Kell oli juba hiline, kui Kärt jõudis koju. ", Speakers.meelis);
-    }
-public static async Task PlayTTS(string text, Speakers speaker, float speed = 1)
-    {
-        if (speed > 2)
-        {
-            speed = 2;
-        }
-        else if(speed<0.5)
-        {
-            speed = 0.5f;
-        }
-        HttpClient client = new HttpClient();
-
-        var payload = new
-        {
-            text,
-            speaker = speaker.ToString().ToLowerInvariant(),
-            speed
-        };
-
-        var content = new StringContent(Newtonsoft.Json.JsonConvert.SerializeObject(payload), Encoding.UTF8, "application/json");
+        // Set DPI awareness for correct screen scaling
+        SetProcessDPIAware();
 
         try
         {
-            // Send POST request to TTS API
-            HttpResponseMessage response = await client.PostAsync("https://api.tartunlp.ai/text-to-speech/v2/", content);
-            response.EnsureSuccessStatusCode();
+            Bitmap screenshot = CaptureScreen();
+            string downloadsPath = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
+            string filePath = Path.Combine(downloadsPath, "screenshot.png");
 
-            // Read the response stream
-            using (Stream audioStream = await response.Content.ReadAsStreamAsync())
-            {
-                // Play the audio stream using NAudio
-                using (var waveOut = new WaveOutEvent())
-                using (var waveReader = new WaveFileReader(audioStream))
-                {
-                    waveOut.Init(waveReader);
-                    waveOut.Play();
+            screenshot.Save(filePath, ImageFormat.Png);
+            screenshot.Dispose();
 
-                    // Wait for playback to finish
-                    while (waveOut.PlaybackState == PlaybackState.Playing)
-                    {
-                        await Task.Delay(500);
-                    }
-                }
-            }
+            Console.WriteLine($"Screenshot saved to: {filePath}");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"An error occurred: {ex.Message}");
+            Console.WriteLine($"Error: {ex.Message}");
         }
+
+        Console.WriteLine("Press any key to exit...");
+        Console.ReadKey();
     }
-    
+
+    static Bitmap CaptureScreen()
+    {
+        Rectangle bounds = GetPhysicalScreenBounds();
+
+        Bitmap screenshot = new Bitmap(bounds.Width, bounds.Height);
+        using (Graphics g = Graphics.FromImage(screenshot))
+        {
+            g.CopyFromScreen(bounds.Location, Point.Empty, bounds.Size);
+
+            Cursor currentCursor = Cursors.Default;
+            if (currentCursor != null)
+            {
+                Point cursorPos = Cursor.Position;
+                Rectangle cursorBounds = new Rectangle(cursorPos, currentCursor.Size);
+                currentCursor.Draw(g, cursorBounds);
+            }
+        }
+
+        return screenshot;
+    }
+
+    static Rectangle GetPhysicalScreenBounds()
+    {
+        // This gets the actual pixel bounds regardless of scaling
+        return new Rectangle(
+            0, 0,
+            Screen.PrimaryScreen.Bounds.Width,
+            Screen.PrimaryScreen.Bounds.Height
+        );
+    }
+
+    [DllImport("user32.dll")]
+    private static extern bool SetProcessDPIAware();
 }
-
-enum Speakers
-{
-    albert,
-    indrek,
-    kalev,
-    kylli,
-    lee,
-    liivika,
-    luukas,
-    mari,
-    meelis,
-    peeter,
-    tambet,
-    vesta
-}
-
-
-
-

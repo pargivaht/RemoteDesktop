@@ -188,6 +188,8 @@ namespace Client2
                         cardViewModel.Background = new SolidColorBrush(Color.FromRgb(193, 60, 0));
                     }
                 });
+
+                
             }
             catch (Exception) // In case of exception (e.g., timeout)
             {
@@ -196,9 +198,6 @@ namespace Client2
                     cardViewModel.Background = new SolidColorBrush(Color.FromRgb(193, 0, 0));
                 });
             }
-
-
-
 
         }
     }

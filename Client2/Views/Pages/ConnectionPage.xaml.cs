@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Drawing;
 using System.IO;
+using System.Net.NetworkInformation;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
@@ -13,6 +14,7 @@ using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
 using Wpf.Ui.Controls;
+using static System.Net.Mime.MediaTypeNames;
 using Image = System.Drawing.Image;
 
 namespace Client2.Views.Pages
@@ -49,7 +51,20 @@ namespace Client2.Views.Pages
 
             Connection.ScreenUpdated += OnScreenUpdated;
             Connection.CameraUpdated += OnCameraUpdated;
+            Connection.PingUpdated += OnPingUpdated;
 
+            ipaddressinfo.Text = "ip: " + ip;
+            
+ 
+        }
+
+        private void OnPingUpdated(long ms)
+        {
+            Dispatcher.Invoke(() =>
+            {
+                pinginfo.Text = "ping: " + ms + "ms";
+            });
+            
         }
 
         private void OnScreenUpdated(Image image)
@@ -271,6 +286,11 @@ namespace Client2.Views.Pages
 
                 Connection.ChangeResolution(resolution);
             }
+        }
+
+        private void RestartServerBtn_Click(object sender, RoutedEventArgs e)
+        {
+            _ = _connection.RestartServer();
         }
     }
 

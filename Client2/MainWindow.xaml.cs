@@ -28,7 +28,7 @@ namespace Client2
         public MainWindow()
         {
 
-            Console.SetWindowSize(110, 25);
+            //Console.SetWindowSize(110, 25);
 
             InitializeComponent();
 

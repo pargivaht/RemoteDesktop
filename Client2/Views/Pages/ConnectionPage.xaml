@@ -55,6 +55,7 @@
                 <Separator />
                 <ui:MenuItem Header="Reconnect" Icon="{ui:SymbolIcon ArrowSync24}" Click="ReconnectBtn_Click"/>
                 <ui:MenuItem Header="Disconnect" Icon="{ui:SymbolIcon PlugDisconnected24}" Click="DisconnectBtn_Click"/>
+                <ui:MenuItem Header="Restart Server" Icon="{ui:SymbolIcon ArrowCounterclockwise24}" Click="RestartServerBtn_Click"/>
             </ui:MenuItem>
             <ui:MenuItem Icon="{ui:SymbolIcon MicOff24}" Header="Mic" Click="MicBtn_Click"/>
             <!-- Mic24 -->
@@ -124,9 +125,9 @@
             </Grid.ColumnDefinitions>
 
 
-            <ui:TextBlock Text="ping: 35ms" HorizontalAlignment="Center" VerticalAlignment="Bottom" FontSize="13" Margin="4,0,0,1" Foreground="Gray" Grid.Column="0"/>
+            <ui:TextBlock Text="ping: " HorizontalAlignment="Center" VerticalAlignment="Bottom" FontSize="13" Margin="4,0,0,1" Foreground="Gray" Grid.Column="0" x:Name="pinginfo"/>
 
-            <ui:TextBlock Text="ip: 192.168.2.93" HorizontalAlignment="Center" VerticalAlignment="Bottom" FontSize="13" Margin="4,0,0,1" Foreground="Gray" Grid.Column="1"/>
+            <ui:TextBlock Text="ip: " HorizontalAlignment="Center" VerticalAlignment="Bottom" FontSize="13" Margin="4,0,0,1" Foreground="Gray" Grid.Column="1" x:Name="ipaddressinfo"/>
 
         </Grid>
     </Grid>

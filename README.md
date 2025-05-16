@@ -21,7 +21,7 @@ HoleServer ja HoleClient - Üritasin UDP hole punchingut testida, ei töödanud.
 
 ## Kasutamine
 
-Downloadi Client2.zip ja Server.zip. Paki mõlemad zip failid lahti ning käivita .exe failid.
+Lae alla Client2.zip ja Server.zip. Paki mõlemad zip failid lahti ning käivita .exe failid.
 
 
 © pargivaht - 2025

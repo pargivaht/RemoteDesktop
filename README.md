@@ -1,22 +1,27 @@
 # Remote Desktop 
 
-Tarkvara, mis võimaldab kaugelt arvutit hallata. See on kirjutatud C# keeles, kasutab TCP ja UDP protokolle, et üle interneti suhelda. See saab edastada pilti, heli ja muud infot kahe või enama arvuti vahel.
+Tarkvara, mis võimaldab kaugelt arvutit hallata. See on kirjutatud C# keeles, kasutab TCP ja UDP protokolle, et üle interneti suhelda. See saab edastada pilti, heli ja muud infot kahe arvuti vahel.
 
 
 
 ## Tarkvara osad
 
-Client ja Server - Hetkel ei tööta.
+Server - Tarkvara osa, mis jagab ekraani.
 
-VoiceServer ja VoiceClient - Väiksemate asjade testimiseks, pole peamise tarkvara osa.
+Client2 - Uuem client, mis kasutab WpfUi (https://github.com/lepoco/wpfui)
 
-Client2 - Kirjutan hetkel Clientit ümber, kuna selle ui oli väga jube.
 
-HoleServer ja HoleClient - Üritasin UDP hole punchingut testida, ei töödanud.
+
+Client - Vana client, enam ei tööta. Pole vajalik.
+
+VoiceServer ja VoiceClient - Väiksemate asjade testimiseks, pole peamise tarkvara osa. Pole vajalik.
+
+HoleServer ja HoleClient - Üritasin UDP hole punchingut testida, ei töödanud. Pole vajalik.
+
 
 ## Kasutamine
 
-Downloadi Client2.zip, extracti see ja käivita Client2.exe (Hetkel ainult ui).
+Downloadi Client2.zip ja Server.zip. Paki mõlemad zip failid lahti ning käivita .exe failid.
 
 
-© pargivaht - 2024
+© pargivaht - 2025

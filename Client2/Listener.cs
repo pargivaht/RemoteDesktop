@@ -1,9 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
-using System.Diagnostics;
 using System.Windows;
 using Newtonsoft.Json;
 using System.IO;
@@ -13,8 +11,7 @@ using Client2.Views.UserControls;
 using System.Net.NetworkInformation;
 using System.Threading;
 using Client2.ViewModel;
-using System.Net;
-using System.Net.Sockets;
+
 
 namespace Client2
 {

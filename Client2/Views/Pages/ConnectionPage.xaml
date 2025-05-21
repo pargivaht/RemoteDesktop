@@ -92,19 +92,38 @@
 
         </Menu>
         <Grid Grid.Row="1">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="50"/>
-                <RowDefinition Height="*"/>
-            </Grid.RowDefinitions>
 
-            <TabControl Margin="15,7,0,-7">
-                <TabItem Header="Screen 1"/>
-                <TabItem Header="Screen 2"/>
+
+            <TabControl Margin="15,7,0,-7" x:Name="tabcontrol">
+                <TabItem Header="Screen">
+                    <ui:Image Stretch="Uniform" VerticalAlignment="Top" HorizontalAlignment="Left" Margin="0,0,4,-12" CornerRadius="10" x:Name="pictureBoxScreen"/>
+                </TabItem>
+                <TabItem Header="Console">
+                    <Border Background="Black" CornerRadius="10" Padding="6" Margin="0,0,4,-12">
+                        <TextBox x:Name="CmdTextBox"
+                         Style="{x:Null}"
+                         Background="Black"
+                         Foreground="White"
+                         FontFamily="Consolas"
+                         FontSize="14"
+                         AcceptsReturn="True"
+                         VerticalScrollBarVisibility="Auto"
+                         BorderThickness="0"
+                         CaretBrush="White"
+                         KeyDown="CmdTextBox_KeyDown"
+                         PreviewKeyDown="CmdTextBox_PreviewKeyDown"
+                         TextChanged="CmdTextBox_TextChanged"
+                         />
+                    </Border>
+
+                </TabItem>
+
+
                 <TabItem Header="Files"/>
                 <TabItem Header="Camera"/>
             </TabControl>
 
-            <ui:Image Grid.Row="1" Stretch="Uniform" VerticalAlignment="Top" HorizontalAlignment="Left" Margin="4,-7,4,-15" CornerRadius="10" x:Name="pictureBoxScreen"/>
+            
         </Grid>
 
         <Grid Grid.Row="2" Margin="24,0,0,0">

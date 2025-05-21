@@ -1,22 +1,21 @@
 ﻿
-using Client2.ViewModel;
 using Client2.Views.Pages;
 using NAudio.Wave;
-using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Net.Http;
-using System.Security.Policy;
 using System.Speech.Synthesis;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media.Imaging;
 using Wpf.Ui;
 using Wpf.Ui.Appearance;
 using Wpf.Ui.Controls;
+using WpfAnimatedGif;
 namespace Client2
 {
     /// <summary>
@@ -104,12 +103,31 @@ namespace Client2
             var contentDialogService = new ContentDialogService();
             contentDialogService.SetDialogHost(RootContentDialogPresenter);
 
+            StackPanel panel = new StackPanel();
+            panel.Children.Add(new Wpf.Ui.Controls.TextBlock() { Text = "Please wait a moment." });
+            panel.Children.Add(new Wpf.Ui.Controls.TextBlock() { Text = "While you wait, enjoy this fish." });
+            var imageControl = new System.Windows.Controls.Image
+            { 
+                Width = 200,
+                Margin = new Thickness(left: 0, top: 20, right: 0, bottom: -50)
+            };
 
-            ContentDialogResult a = await contentDialogService.ShowAsync(
+            var gif = new BitmapImage();
+            gif.BeginInit();
+            gif.UriSource = new Uri("pack://application:,,,/fish-spin.gif", UriKind.Absolute);
+            gif.CacheOption = BitmapCacheOption.OnLoad;
+            gif.EndInit();
+
+            ImageBehavior.SetAnimatedSource(imageControl, gif); // ← this enables animation
+
+            panel.Children.Add(imageControl);
+
+            var result = await contentDialogService.ShowAsync(
             new ContentDialog()
             {
                 Title = "Connecting...",
-                Content = "Please wait a moment.",
+                //Content = "Please wait a moment.",
+                Content = panel,
                 IsPrimaryButtonEnabled = false,
                 IsSecondaryButtonEnabled = false,
                 PrimaryButtonAppearance = ControlAppearance.Secondary,
@@ -122,7 +140,6 @@ namespace Client2
         {
             var contentDialogService = new ContentDialogService();
             contentDialogService.SetDialogHost(RootContentDialogPresenter);
-
 
             ContentDialogResult a = await contentDialogService.ShowAsync(
             new ContentDialog()

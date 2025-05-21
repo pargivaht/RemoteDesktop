@@ -19,8 +19,7 @@ using Newtonsoft.Json;
 using Hardware.Info;
 using System.Speech.Synthesis;
 using System.Net.Http;
-using Microsoft.VisualBasic.FileIO;
-using System.Web;
+using System.Threading;
 
 namespace Server
 {
@@ -101,6 +100,10 @@ namespace Server
 
         private static Size size = new Size(1920, 1080);
 
+        private static Process cmdProcess;
+        private static StreamWriter cmdWriter;
+        private static StreamReader cmdReader;
+
 
         static async Task Main(string[] args)
         {
@@ -130,6 +133,7 @@ namespace Server
             comsListener.Start();
             Console.WriteLine("Communication service started.");
 
+            new Thread(StartCmd) { IsBackground = true }.Start();
 
 
             Console.WriteLine("Getting system info...");
@@ -144,6 +148,33 @@ namespace Server
                 AcceptClientsAsync(comsListener, HandleComsClinetAsync)
             );
         }
+
+        public static void StartCmd()
+        {
+            cmdProcess = new Process
+            {
+                StartInfo = new ProcessStartInfo
+                {
+                    FileName = "cmd.exe",
+                    Arguments = "/Q /K",
+                    RedirectStandardInput = true,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true, // merge error output
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                    StandardOutputEncoding = Encoding.UTF8,
+                    StandardErrorEncoding = Encoding.UTF8
+                }
+            };
+
+            cmdProcess.Start();
+            cmdWriter = cmdProcess.StandardInput;
+            cmdReader = cmdProcess.StandardOutput;
+
+            cmdWriter.WriteLine("@echo off");
+            cmdWriter.Flush();
+        }
+
 
         private static async Task IsInfoReady()
         {
@@ -165,10 +196,11 @@ namespace Server
             {
                 while (true)
                 {
-                    TcpClient client = await listener.AcceptTcpClientAsync();
+                    TcpClient client = await listener.AcceptTcpClientAsync().ConfigureAwait(false);
                     Console.WriteLine("Client connected.");
 
-                    _ = handleClient(client);
+                    //_ = handleClient(client);
+                    _ = Task.Run(() => handleClient(client));
 
                 }
             }
@@ -505,10 +537,16 @@ namespace Server
                             size.Height = Convert.ToInt32(parts[1]);
                         }
 
-                        if (receivedData.StartsWith("cmd>"))
+                        if (receivedData.StartsWith("cmd|"))
                         {
-                            
+                            string result = await ExecuteCmdAsync(receivedData.Substring(4));
+                            Console.WriteLine($"{result}");
+                            string output = "cmd|" + result;
+
+                            byte[] bytes = Encoding.UTF8.GetBytes(output);
+                            await stream.WriteAsync(bytes, 0, bytes.Length);
                         }
+
 
 
                         switch (receivedData)
@@ -1093,6 +1131,33 @@ namespace Server
         }
 
 
+        public static async Task<string> ExecuteCmdAsync(string command)
+        {
+            string marker = "END_OF_OUTPUT_" + Guid.NewGuid().ToString("N");
+
+            if (string.IsNullOrWhiteSpace(command)) return "";
+
+            await cmdWriter.WriteLineAsync(command);
+            await cmdWriter.WriteLineAsync("echo " + marker);
+            await cmdWriter.FlushAsync();
+
+            var sb = new StringBuilder();
+            string line;
+            while ((line = await cmdReader.ReadLineAsync()) != null)
+            {
+                if (line.Trim() == marker)
+                    break;
+
+                sb.AppendLine(line);
+            }
+
+            return sb.ToString().TrimEnd();
+        }
+
+
+
+
+
 
 
         static Bitmap CaptureScreen()
@@ -1102,7 +1167,6 @@ namespace Server
 
             Rectangle bounds = Screen.PrimaryScreen.Bounds;
 
-            // Create bitmap with physical pixel size
             Bitmap screenshot = new Bitmap(bounds.Width, bounds.Height);
 
             using (Graphics g = Graphics.FromImage(screenshot))
@@ -1114,7 +1178,7 @@ namespace Server
                 {
                     Point cursorPos = Cursor.Position;
                     Rectangle cursorBounds = new Rectangle(cursorPos, currentCursor.Size);
-                    currentCursor.Draw(g, cursorBounds);
+                    currentCursor.Draw(g, cursorBounds); //Joonista fake cursor pilidle
                 }
             }
 

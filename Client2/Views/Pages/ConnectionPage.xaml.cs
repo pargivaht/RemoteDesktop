@@ -1,20 +1,14 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Drawing;
-using System.IO;
-using System.Net.NetworkInformation;
 using System.Runtime.InteropServices;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Interop;
-using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
 using Wpf.Ui.Controls;
-using static System.Net.Mime.MediaTypeNames;
 using Image = System.Drawing.Image;
 
 namespace Client2.Views.Pages
@@ -32,6 +26,11 @@ namespace Client2.Views.Pages
 
         MainWindow window;
 
+
+        private const string Prompt = @"C:\>";
+        private static string outp = null;
+        private int _promptStartIndex;
+
         public ConnectionPage()
         {
             InitializeComponent();
@@ -47,15 +46,46 @@ namespace Client2.Views.Pages
 
             window = NavigationParameters.Window;
 
+            var sw = Stopwatch.StartNew();
             _connection = new Connection(ip, port, password, this, window);
+            sw.Stop();
+            Console.WriteLine($"ConnectToServer took {sw.ElapsedMilliseconds} ms");
+
+            
 
             Connection.ScreenUpdated += OnScreenUpdated;
             Connection.CameraUpdated += OnCameraUpdated;
             Connection.PingUpdated += OnPingUpdated;
+            Connection.Cmd += OnCmdOutput;
 
             ipaddressinfo.Text = "ip: " + ip;
-            
- 
+
+            InitializeCmd();
+
+            Task.Run(async () =>
+            {
+                while (true)
+                {
+                    if (outp != null)
+                    {
+
+                        Dispatcher.Invoke(() =>
+                        {
+                            if (outp == "")
+                                CmdTextBox.Text += "\n" + outp + Prompt;
+                            else
+                                CmdTextBox.Text += "\n" + outp + "\n" + Prompt;
+
+                            CmdTextBox.CaretIndex = CmdTextBox.Text.Length;
+                            _promptStartIndex = CmdTextBox.Text.Length;
+                        });
+
+
+                        outp = null;
+                    }
+                    await Task.Delay(100);
+                }
+            });
         }
 
         private void OnPingUpdated(long ms)
@@ -193,8 +223,6 @@ namespace Client2.Views.Pages
 
         private void DisconnectBtn_Click(object sender, RoutedEventArgs e)
         {
-
-            //NavigationService?.Navigate(new MainPage());
             window.RootNavigation.Navigate(typeof(MainPage));
             _connection.Disconnect();
             _connection = null;
@@ -292,8 +320,85 @@ namespace Client2.Views.Pages
         {
             _ = _connection.RestartServer();
         }
-    }
 
+
+        private void OnCmdOutput(string output)
+        {
+            outp = output;
+        }
+
+
+        private void InitializeCmd()
+        {
+            CmdTextBox.Text = Prompt;
+            _promptStartIndex = CmdTextBox.Text.Length;
+            CmdTextBox.Focus();
+            CmdTextBox.CaretIndex = _promptStartIndex;
+
+
+        }
+
+        private async void CmdTextBox_PreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            // Prevent moving caret before prompt
+            if (CmdTextBox.CaretIndex < _promptStartIndex &&
+                e.Key != Key.Left && e.Key != Key.Right && e.Key != Key.Up && e.Key != Key.Down)
+            {
+                e.Handled = true;
+                CmdTextBox.CaretIndex = CmdTextBox.Text.Length;
+                return;
+            }
+
+            // Prevent backspacing into the prompt
+            if (e.Key == Key.Back && CmdTextBox.CaretIndex <= _promptStartIndex)
+            {
+                e.Handled = true;
+                return;
+            }
+
+            // Prevent deleting prompt
+            if (e.Key == Key.Delete && CmdTextBox.CaretIndex < _promptStartIndex)
+            {
+                e.Handled = true;
+                return;
+            }
+
+            // Handle Enter (simulate command execution)
+            if (e.Key == Key.Enter)
+            {
+                e.Handled = true;
+
+                string fullText = CmdTextBox.Text;
+                string input = fullText.Substring(_promptStartIndex).Trim();
+
+                if (input == "cls")
+                {
+                    InitializeCmd();
+                }
+                else
+                {
+                    await Connection.SendData("cmd|" + input);
+                }
+            }
+        }
+
+
+        private void CmdTextBox_KeyDown(object sender, KeyEventArgs e)
+        {
+            CmdTextBox.CaretIndex = CmdTextBox.Text.Length;
+        }
+
+        private void CmdTextBox_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            // Prevent programmatic edits from altering the prompt
+            if (CmdTextBox.CaretIndex < _promptStartIndex)
+            {
+                CmdTextBox.CaretIndex = CmdTextBox.Text.Length;
+            }
+        }
+
+
+    }
 
     public static class NavigationParameters
     {

@@ -6,14 +6,11 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Controls;
 using NAudio.Wave;
-using MessageBox = System.Windows.MessageBox;
 using Image = System.Drawing.Image;
 using Client2;
 using System.Windows;
 using Client2.Views.Pages;
 using Newtonsoft.Json;
-using System.Windows.Media.Imaging;
-using System.Diagnostics;
 using System.Net.NetworkInformation;
 
 public class Connection
@@ -31,6 +28,7 @@ public class Connection
     public static event Action<Image> ScreenUpdated;
     public static event Action<Image> CameraUpdated;
     public static event Action<long> PingUpdated;
+    public static event Action<string> Cmd;
 
 
     static TcpClient cameraClient;
@@ -49,8 +47,8 @@ public class Connection
 
     private static CancellationTokenSource cancellationTokenSource;
 
-    private bool MicImageSwitch = false;
-    private bool SpeakerImageSwitch = false;
+    private static bool MicImageSwitch = false;
+    private static bool SpeakerImageSwitch = false;
     private bool PauseImageSwitch = false;
     private bool PauseCamSwitch = false;
     static int CurremtCameraIndex = 1;
@@ -62,6 +60,7 @@ public class Connection
 
     public static long ping;
 
+    
 
     public Connection(string ip, int port, string password, Page page, MainWindow window)
     {
@@ -77,30 +76,46 @@ public class Connection
     {
         try
         {
-            client = new TcpClient(Ip, 8888);  // for screen
-            stream = client.GetStream();
+            cancellationTokenSource = new CancellationTokenSource();
 
-            cameraClient = new TcpClient(Ip, 8890);  // for camera
-            cameraStream = cameraClient.GetStream();
+            mainWindow.DialogWait(cancellationTokenSource.Token);
 
-            comClient = new TcpClient(Ip, 8892);  // for commands
-            comStream = comClient.GetStream();
+            await Task.WhenAll(
+                Task.Run(() =>
+                {
+                    client = new TcpClient(Ip, 8888); //screen
+                    stream = client.GetStream();
+                }),
+                Task.Run(() =>
+                {
+                    cameraClient = new TcpClient(Ip, 8890);
+                    cameraStream = cameraClient.GetStream();
+                }),
+                Task.Run(() =>
+                {
+                    comClient = new TcpClient(Ip, 8892);
+                    comStream = comClient.GetStream();
+                })
+            );
+
+            cancellationTokenSource.Cancel();
 
             cancellationTokenSource = new CancellationTokenSource();
 
 
             await Task.WhenAll(
                 Task.Run(() => ReceiveScreen(cancellationTokenSource.Token)),
-                Task.Factory.StartNew(async () => 
+                Task.Factory.StartNew(async () =>
                 {
                     while (true)
                     {
-                       await SendData(Console.ReadLine());
+                        await SendData(Console.ReadLine());
                     }
                 }),
                 //Task.Run(() => ReceiveCameraStream(cancellationTokenSource.Token)),
                 Task.Run(() => ReceiveCommands(cancellationTokenSource.Token)),
-                Task.Run(Ping)
+                Task.Run(Ping),
+                Task.Run(() => HandleRemoteShell())
             );
         }
         catch (Exception ex)
@@ -271,7 +286,6 @@ public class Connection
                 }
 
 
-
                 // Read the number of frames in the batch
                 byte[] frameCountBytes = new byte[sizeof(int)];
                 await stream.ReadAsync(frameCountBytes, 0, frameCountBytes.Length, cancellationToken);
@@ -405,6 +419,12 @@ public class Connection
                             Console.WriteLine("Error deserializing system info: " + ex.Message);
                         }
                     }
+
+                    if(receivedData.StartsWith("cmd|"))
+                    {
+                        string output = receivedData.Substring(4);
+                        Cmd.Invoke(output);
+                    }
                 }
             }
         }
@@ -429,6 +449,11 @@ public class Connection
                 comClient.Close();
             }
         }
+    }
+
+    public static async Task HandleRemoteShell()
+    {
+
     }
 
     public static async void ChangeFps(int _fps)
@@ -456,7 +481,7 @@ public class Connection
         else
         {
             compression = _compression;
-            await SendData("compression1" + _compression.ToString());
+            await SendData("compression" + _compression.ToString());
             Thread.Sleep(100);
         }
     }

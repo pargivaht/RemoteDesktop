@@ -30,11 +30,10 @@
                 </ui:MenuItem>
                 
                 <ui:MenuItem Header="Other" Icon="{ui:SymbolIcon Apps24}">
-                    <ui:MenuItem Icon="{ui:SymbolIcon WindowConsole20}" Header="Remote Shell"/>
                     <ui:MenuItem Icon="{ui:SymbolIcon Info24}" Header="System Info" Click="SysInfo_Click"/>
-                    <ui:MenuItem Icon="{ui:SymbolIcon Folder24}" Header="File Explorer"/>
-                    <ui:MenuItem Icon="{ui:SymbolIcon DesktopPulse24}" Header="Task Manager"/>
-                    <ui:MenuItem Icon="{ui:SymbolIcon WindowShield16}" Header="Elevate"/>
+                    <ui:MenuItem Icon="{ui:SymbolIcon Folder24}" Header="File Explorer*"/>
+                    <ui:MenuItem Icon="{ui:SymbolIcon DesktopPulse24}" Header="Task Manager*"/>
+                    <ui:MenuItem Icon="{ui:SymbolIcon WindowShield16}" Header="Elevate*"/>
                 </ui:MenuItem>
 
                 <ui:MenuItem Header="Fun" Icon="{ui:SymbolIcon EmojiLaugh24}">

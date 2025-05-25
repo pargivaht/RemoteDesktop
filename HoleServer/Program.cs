@@ -46,6 +46,7 @@
 
 using System;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Security.Cryptography;
@@ -54,123 +55,75 @@ using System.Threading.Tasks;
 
 class SecureServer
 {
-    static string rsaPublicKey;
-    static string rsaPrivateKey;
-    static byte[] aesKey;
-    static byte[] aesIV = new byte[16]; // IV should be random in real cases
 
     static async Task Main()
     {
-        // Generate RSA key pair
-        (rsaPublicKey, rsaPrivateKey) = RSAKeyPair.GenerateKeys();
-        TcpListener listener = new TcpListener(IPAddress.Any, 8888);
-        listener.Start();
-        Console.WriteLine("Server started.");
-
-        while (true)
-        {
-            TcpClient client = await listener.AcceptTcpClientAsync();
-            _ = Task.Run(() => HandleClient(client));
-        }
+        Console.WriteLine("skibidi123");
+        byte[] a = Encrypt("skibidi123", "password");
+        foreach (byte b in a) { Console.Write(b); }
+        string message = Decrypt(a, "password");
+        Console.WriteLine(message);
     }
 
-    static async Task HandleClient(TcpClient client)
+    public static byte[] Encrypt(string plainText, string password)
     {
-        // Using curly braces for C# 7.3 compatibility
-        using (var stream = client.GetStream())
-        using (var reader = new StreamReader(stream, Encoding.UTF8))
-        using (var writer = new StreamWriter(stream) { AutoFlush = true })
+        // Generate random salt
+        byte[] salt = new byte[16];
+        using (var rng = RandomNumberGenerator.Create())
+            rng.GetBytes(salt);
+
+        // Derive key
+        var key = new Rfc2898DeriveBytes(password, salt, 100_000, HashAlgorithmName.SHA256);
+
+        using (Aes aes = Aes.Create())
         {
-            // Send RSA public key
-            await writer.WriteLineAsync(rsaPublicKey);
+            aes.Key = key.GetBytes(32); // 256-bit key
+            aes.GenerateIV();
+            aes.Mode = CipherMode.CBC;
+            aes.Padding = PaddingMode.PKCS7;
 
-            // Receive encrypted AES key from client
-            byte[] encryptedKey = Convert.FromBase64String(await reader.ReadLineAsync());
-            aesKey = Convert.FromBase64String(RSAEncryption.DecryptWithRSA(encryptedKey, rsaPrivateKey));
-
-            Console.WriteLine("Secure AES key received.");
-
-            // Receive encrypted message
-            string encryptedMessage = await reader.ReadLineAsync();
-            byte[] cipherText = Convert.FromBase64String(encryptedMessage);
-            string decryptedMessage = AESEncryption.Decrypt(cipherText, aesKey, aesIV);
-
-            Console.WriteLine($"Decrypted Message: {decryptedMessage}");
-        }
-    }
-}
-
-class RSAKeyPair
-{
-    public static (string publicKey, string privateKey) GenerateKeys()
-    {
-        using (var rsa = RSA.Create(2048)) // Generate 2048-bit RSA key pair
-        {
-            return (Convert.ToBase64String(rsa.ExportRSAPublicKey()), Convert.ToBase64String(rsa.ExportRSAPrivateKey()));
-        }
-    }
-}
-
-class RSAEncryption
-{
-    public static byte[] EncryptWithRSA(string plainText, string publicKey)
-    {
-        using (var rsa = RSA.Create())
-        {
-            // Import the public key using the ImportCspBlob method (CSP style)
-            rsa.ImportCspBlob(Convert.FromBase64String(publicKey));
-            return rsa.Encrypt(Encoding.UTF8.GetBytes(plainText), RSAEncryptionPadding.OaepSHA256);
-        }
-    }
-
-    public static string DecryptWithRSA(byte[] cipherText, string privateKey)
-    {
-        using (var rsa = RSA.Create())
-        {
-            // Import the private key using the ImportCspBlob method (CSP style)
-            rs(Convert.FromBase64String(privateKey));
-            return Encoding.UTF8.GetString(rsa.Decrypt(cipherText, RSAEncryptionPadding.OaepSHA256));
-        }
-    }
-}
-
-
-class AESEncryption
-{
-    public static byte[] Encrypt(string plainText, byte[] key, byte[] iv)
-    {
-        using (var aes = Aes.Create())
-        {
-            aes.Key = key;
-            aes.IV = iv;
-
-            using (var encryptor = aes.CreateEncryptor())
             using (var ms = new MemoryStream())
-            using (var cs = new CryptoStream(ms, encryptor, CryptoStreamMode.Write))
-            using (var writer = new StreamWriter(cs))
             {
-                writer.Write(plainText);
-                writer.Flush();
-                cs.FlushFinalBlock();
+                // Write salt + IV to the beginning
+                ms.Write(salt, 0, salt.Length);
+                ms.Write(aes.IV, 0, aes.IV.Length);
+
+                using (var cryptoStream = new CryptoStream(ms, aes.CreateEncryptor(), CryptoStreamMode.Write))
+                using (var writer = new StreamWriter(cryptoStream))
+                {
+                    writer.Write(plainText);
+                }
+
                 return ms.ToArray();
             }
         }
     }
 
-    public static string Decrypt(byte[] cipherText, byte[] key, byte[] iv)
-    {
-        using (var aes = Aes.Create())
-        {
-            aes.Key = key;
-            aes.IV = iv;
 
-            using (var decryptor = aes.CreateDecryptor())
-            using (var ms = new MemoryStream(cipherText))
-            using (var cs = new CryptoStream(ms, decryptor, CryptoStreamMode.Read))
-            using (var reader = new StreamReader(cs))
+
+    public static string Decrypt(byte[] encryptedData, string password)
+    {
+        byte[] salt = encryptedData.Take(16).ToArray();
+        byte[] iv = encryptedData.Skip(16).Take(16).ToArray();
+        byte[] ciphertext = encryptedData.Skip(32).ToArray();
+
+        var key = new Rfc2898DeriveBytes(password, salt, 100_000, HashAlgorithmName.SHA256);
+
+        using (Aes aes = Aes.Create())
+        {
+            aes.Key = key.GetBytes(32);
+            aes.IV = iv;
+            aes.Mode = CipherMode.CBC;
+            aes.Padding = PaddingMode.PKCS7;
+
+            using (var ms = new MemoryStream(ciphertext))
+            using (var cryptoStream = new CryptoStream(ms, aes.CreateDecryptor(), CryptoStreamMode.Read))
+            using (var reader = new StreamReader(cryptoStream))
             {
                 return reader.ReadToEnd();
             }
         }
     }
+
+
 }

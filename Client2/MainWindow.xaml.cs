@@ -23,13 +23,23 @@ namespace Client2
     /// </summary>
     public partial class MainWindow
     {
+        Wpf.Ui.Controls.TextBox url;
+        ToggleSwitch urlSwitch;
 
         public MainWindow()
         {
 
             //Console.SetWindowSize(110, 25);
-
             InitializeComponent();
+
+
+            urlSwitch = new ToggleSwitch();
+            url = new Wpf.Ui.Controls.TextBox() { PlaceholderText = "Enter url (required)" };
+
+            urlSwitch.Checked += UrlSwitch_Checked;
+            urlSwitch.Unchecked += UrlSwitch_Unchecked;
+
+            
 
             StateChanged += MainWindow_StateChanged;
             Loaded += Window_Loaded;
@@ -40,6 +50,16 @@ namespace Client2
                 RootNavigation.IsPaneOpen = false;
             };
 
+        }
+
+        private void UrlSwitch_Unchecked(object sender, RoutedEventArgs e)
+        {
+            url.PlaceholderText = "Enter url (required)";
+        }
+
+        private void UrlSwitch_Checked(object sender, RoutedEventArgs e)
+        {
+            url.PlaceholderText = "Enter google search query";
         }
 
         private void MainWindow_StateChanged(object sender, EventArgs e)
@@ -135,7 +155,6 @@ namespace Client2
             }, c);
         }
 
-
         public async Task DialogError(string title, string error, CancellationToken c)
         {
             var contentDialogService = new ContentDialogService();
@@ -152,7 +171,6 @@ namespace Client2
                 CloseButtonText = "Ok"
             }, c);
         }
-
 
         public async Task<string> DialogCreateMessageBox(CancellationToken c)
         {
@@ -288,19 +306,17 @@ namespace Client2
             
         }
 
-
         public async Task<string> DialogCreateUrl(CancellationToken c)
         {
             var contentDialogService = new ContentDialogService();
             contentDialogService.SetDialogHost(RootContentDialogPresenter);
 
-            // Create UI elements
-            Wpf.Ui.Controls.TextBox url = new Wpf.Ui.Controls.TextBox() { PlaceholderText = "Enter url (required)" };
-
 
             StackPanel panel = new StackPanel();
             panel.Children.Add(new Wpf.Ui.Controls.TextBlock() { Text = "Url:" });
             panel.Children.Add(url);
+            panel.Children.Add(new Wpf.Ui.Controls.TextBlock() { Text = "Use google search?" });
+            panel.Children.Add(urlSwitch);
 
             var dialog = new ContentDialog()
             {
@@ -312,15 +328,26 @@ namespace Client2
 
             // Show the dialog
             var result = await contentDialogService.ShowAsync(dialog, c);
+            
+            panel.Children.Clear();
+            url.Clear();
 
             if (result == ContentDialogResult.Primary)
             {
-                return $"{url.Text}";
+                if (urlSwitch.IsChecked == true)
+                {
+                    return $"https://www.google.com/search?q={url.Text}";
+                }
+                else
+                {
+                    return $"{url.Text}";
+                }
+
+                    
             }
 
             return null; // User canceled the dialog
         }
-
 
         public async Task DialogFillAll()
         {

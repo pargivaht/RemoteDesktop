@@ -87,6 +87,8 @@
                 <ComboBoxItem Content="640x360"/>
             </ComboBox>
 
+            <ui:MenuItem Icon="{ui:SymbolIcon ArrowExpand24}" Header="" Click="Fullscreen_BtnClick"/>
+
 
 
         </Menu>

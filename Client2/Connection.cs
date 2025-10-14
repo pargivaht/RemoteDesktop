@@ -235,7 +235,8 @@ public class Connection
 
     public static async Task SendData(string stringData)
     {
-        byte[] data = Encoding.UTF8.GetBytes(stringData);
+        byte[] data = Encoding.UTF8.GetBytes(stringData + "*");
+
         await SendDataByte(data);
     }
 

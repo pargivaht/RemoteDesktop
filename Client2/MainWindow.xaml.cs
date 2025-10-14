@@ -84,6 +84,7 @@ namespace Client2
 
             // Navigate to the ConnectionPage
             RootNavigation.Navigate(typeof(ConnectionPage));
+            Listener.isConnected = true;
         }
 
         public void SetTitle(string title)

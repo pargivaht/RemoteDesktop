@@ -21,15 +21,13 @@ namespace Client2.Views.Pages
 
         public Connection _connection;
 
-        private const double HeaderHeight = 55;
-        private const double FooterHeight = 40;
-
         MainWindow window;
-
 
         private const string Prompt = @"C:\>";
         private static string outp = null;
         private int _promptStartIndex;
+
+        public static bool isFullscreen = false;
 
         public ConnectionPage()
         {
@@ -50,7 +48,7 @@ namespace Client2.Views.Pages
             _connection = new Connection(ip, port, password, this, window);
             sw.Stop();
             Console.WriteLine($"ConnectToServer took {sw.ElapsedMilliseconds} ms");
-
+            
             
 
             Connection.ScreenUpdated += OnScreenUpdated;
@@ -101,6 +99,7 @@ namespace Client2.Views.Pages
         {
             Dispatcher.Invoke(() =>
             {
+                if (isFullscreen) return;
                 pictureBoxScreen.Source = ConvertToBitmapImage(image);
             });
         }
@@ -226,6 +225,8 @@ namespace Client2.Views.Pages
             window.RootNavigation.Navigate(typeof(MainPage));
             _connection.Disconnect();
             _connection = null;
+
+            Listener.isConnected = false;
         }
 
         private void fps_slider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
@@ -397,7 +398,11 @@ namespace Client2.Views.Pages
             }
         }
 
-
+        private void Fullscreen_BtnClick(object sender, RoutedEventArgs e)
+        {
+            Fullscreen fullscreen = new Fullscreen();
+            fullscreen.Show();
+        }
     }
 
     public static class NavigationParameters

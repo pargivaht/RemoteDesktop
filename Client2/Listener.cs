@@ -11,6 +11,9 @@ using Client2.Views.UserControls;
 using System.Net.NetworkInformation;
 using System.Threading;
 using Client2.ViewModel;
+using System.Net.Sockets;
+using System.Windows.Markup;
+using System.Text;
 
 
 namespace Client2
@@ -25,6 +28,7 @@ namespace Client2
         static MainWindow mainWindow = (MainWindow)Application.Current.MainWindow;
         static List<CardViewModel> cardViewModels = new List<CardViewModel>(); // List to store the view models
         static List<Connection> connections = new List<Connection>(); // To store the connection data
+        static public bool isConnected = false;
         static Timer timer;
 
         public Listener(MainPage mainPage) 
@@ -35,7 +39,7 @@ namespace Client2
         public void Start()
         {
             ReadCardSaves();
-            timer = new Timer(PingConnections, null, 0, 3000);
+            timer = new Timer(PingConnections, null, 0, 10000);
         }
 
         public void AddNewCard(string Name, string ip, string port, string password)
@@ -45,7 +49,7 @@ namespace Client2
             string file = Path.Combine(path, "saves.json");
             if (!Directory.Exists(path)) Directory.CreateDirectory(path);
 
-            List<Connection> connections = File.Exists(file)
+            connections = File.Exists(file)
                 ? JsonConvert.DeserializeObject<List<Connection>>(File.ReadAllText(file)) ?? new List<Connection>()
                 : new List<Connection>();
 
@@ -167,36 +171,49 @@ namespace Client2
 
         static async void PingConnection(CardViewModel cardViewModel)
         {
-            Ping pingSender = new Ping();
+            if (isConnected) return;
+
             try
             {
-                PingReply reply = pingSender.Send(cardViewModel.Ip, 1000);
-                Application.Current.Dispatcher.Invoke(() =>
+                using (var client = new TcpClient())
                 {
-                    if (reply.Status == IPStatus.Success)
+                    var connectTask = client.ConnectAsync(cardViewModel.Ip, 8892);
+                    if (await Task.WhenAny(connectTask, Task.Delay(3000)) != connectTask)
+                        throw new TimeoutException("Connection timed out.");
+
+                    using (NetworkStream stream = client.GetStream())
                     {
+                        byte[] data = Encoding.UTF8.GetBytes("ping*");
+                        await stream.WriteAsync(data, 0, data.Length);
 
-                        cardViewModel.Background = new SolidColorBrush(Color.FromRgb(0, 200, 0));
+                        var buffer = new byte[1024];
+                        var readTask = stream.ReadAsync(buffer, 0, buffer.Length);
 
+                        if (await Task.WhenAny(readTask, Task.Delay(3000)) != readTask)
+                            throw new TimeoutException("Response timed out.");
+
+                        int bytesRead = readTask.Result;
+                        string response = Encoding.UTF8.GetString(buffer, 0, bytesRead).Trim();
+
+                        Application.Current.Dispatcher.Invoke(() =>
+                        {
+                            if (response.Equals("pong", StringComparison.OrdinalIgnoreCase))
+                                cardViewModel.Background = new SolidColorBrush(Color.FromRgb(0, 200, 0)); // green
+                            else
+                                cardViewModel.Background = new SolidColorBrush(Color.FromRgb(193, 60, 0)); // orange
+                        });
                     }
-                    else
-                    {
-
-                        cardViewModel.Background = new SolidColorBrush(Color.FromRgb(193, 60, 0));
-                    }
-                });
-
-                
+                }
             }
-            catch (Exception) // In case of exception (e.g., timeout)
+            catch (Exception)
             {
                 Application.Current.Dispatcher.Invoke(() =>
                 {
-                    cardViewModel.Background = new SolidColorBrush(Color.FromRgb(193, 0, 0));
+                    cardViewModel.Background = new SolidColorBrush(Color.FromRgb(193, 0, 0)); // red
                 });
             }
-
         }
+
     }
 
 }

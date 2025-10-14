@@ -111,6 +111,9 @@
       <SubType>Designer</SubType>
     </ApplicationDefinition>
     <Compile Include="Connection.cs" />
+    <Compile Include="Fullscreen.xaml.cs">
+      <DependentUpon>Fullscreen.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Listener.cs" />
     <Compile Include="SystemInfo.xaml.cs">
       <DependentUpon>SystemInfo.xaml</DependentUpon>
@@ -129,6 +132,10 @@
     <Compile Include="Views\UserControls\Card.xaml.cs">
       <DependentUpon>Card.xaml</DependentUpon>
     </Compile>
+    <Page Include="Fullscreen.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Page Include="MainWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
